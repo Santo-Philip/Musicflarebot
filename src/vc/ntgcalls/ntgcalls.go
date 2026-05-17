@@ -1,6 +1,6 @@
 package ntgcalls
 
-//#cgo LDFLAGS: -L${SRCDIR}/.. -lntgcalls
+//#cgo LDFLAGS: -L${SRCDIR}/.. -lntgcalls -lm -lz -lresolv -lrt -ldl -latomic
 //#include "ntgcalls.h"
 //#include <stdlib.h>
 //extern void handleStreamEnd(uintptr_t ptr, int64_t chatID, ntg_stream_type_enum streamType, ntg_stream_device_enum streamDevice, void*);

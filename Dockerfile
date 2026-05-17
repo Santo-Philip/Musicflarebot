@@ -4,7 +4,7 @@ WORKDIR /app
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    gcc \
+    build-essential \
     zlib1g-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
@@ -27,6 +27,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     lsb-release \
     ca-certificates \
+    libatomic1 \
     && rm -rf /var/lib/apt/lists/*
 
 RUN wget -O /usr/local/bin/yt-dlp \
