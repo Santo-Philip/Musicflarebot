@@ -2,14 +2,25 @@ package handlers
 
 import (
 	"fmt"
+	"io"
 	"musicflarebot/config"
+	"net/http"
+	"os"
+	"path/filepath"
 	"runtime"
+	"strings"
+	"sync"
 	"time"
 
 	"musicflarebot/src/core"
 	"musicflarebot/src/core/db"
 
 	tg "github.com/amarnathcjd/gogram/telegram"
+)
+
+var (
+	startMediaOnce sync.Once
+	startMediaPath string
 )
 
 func pingHandler(m *tg.NewMessage) error {
@@ -35,6 +46,62 @@ func pingHandler(m *tg.NewMessage) error {
 	return err
 }
 
+func getCachedStartMedia() string {
+	if startMediaPath != "" {
+		return startMediaPath
+	}
+
+	startMediaOnce.Do(func() {
+		url := config.Conf.StartImg
+		if url == "" {
+			return
+		}
+
+		ext := ".mp4"
+		lower := strings.ToLower(url)
+		switch {
+		case strings.HasSuffix(lower, ".jpg"), strings.HasSuffix(lower, ".jpeg"):
+			ext = ".jpg"
+		case strings.HasSuffix(lower, ".png"):
+			ext = ".png"
+		case strings.HasSuffix(lower, ".gif"):
+			ext = ".gif"
+		case strings.HasSuffix(lower, ".webm"):
+			ext = ".webm"
+		case strings.HasSuffix(lower, ".mov"):
+			ext = ".mov"
+		}
+
+		dest := filepath.Join(config.Conf.DownloadsDir, "start_media"+ext)
+
+		if _, err := os.Stat(dest); err == nil {
+			startMediaPath = dest
+			return
+		}
+
+		resp, err := http.Get(url)
+		if err != nil {
+			return
+		}
+		defer resp.Body.Close()
+
+		f, err := os.Create(dest)
+		if err != nil {
+			return
+		}
+		defer f.Close()
+
+		if _, err := io.Copy(f, resp.Body); err != nil {
+			os.Remove(dest)
+			return
+		}
+
+		startMediaPath = dest
+	})
+
+	return startMediaPath
+}
+
 func startHandler(m *tg.NewMessage) error {
 	chatID := m.ChatID()
 	if IsPrivate(m) {
@@ -48,7 +115,12 @@ func startHandler(m *tg.NewMessage) error {
 			client.Me().FirstName,
 		)
 
-		_, err := m.ReplyMedia(config.Conf.StartImg, &tg.MediaOptions{
+		media := getCachedStartMedia()
+		if media == "" {
+			media = config.Conf.StartImg
+		}
+
+		_, err := m.ReplyMedia(media, &tg.MediaOptions{
 			ParseMode:   "HTML",
 			Caption:     response,
 			ReplyMarkup: core.AddMeMarkup(client.Me().Username),
