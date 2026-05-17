@@ -44,7 +44,7 @@ func LoadModules(c *tg.Client) {
 	c.OnCommand("stop", stopHandler)
 	c.OnCommand("end", stopHandler)
 	c.OnCommand("start", startHandler)
-	c.OnCommand("help", startHandler)
+	c.OnCommand("help", helpCommandHandler)
 	c.OnCommand("ping", pingHandler)
 	c.OnCommand("play", playHandler)
 	c.OnCommand("p", playHandler)

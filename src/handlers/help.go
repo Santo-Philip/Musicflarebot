@@ -8,6 +8,24 @@ import (
 	tg "github.com/amarnathcjd/gogram/telegram"
 )
 
+func helpCommandHandler(m *tg.NewMessage) error {
+	if !IsPrivate(m) {
+		_, err := m.Reply("Click the button below for help.", &tg.SendOptions{
+			ReplyMarkup: core.SupportBtn(),
+			ParseMode:   "HTML",
+		})
+		return err
+	}
+
+	response := getHelpText("all", firstName(m))
+	_, err := m.Reply(response, &tg.SendOptions{
+		ParseMode:   "HTML",
+		LinkPreview: false,
+		ReplyMarkup: core.HelpMenuKeyboard(),
+	})
+	return err
+}
+
 func helpCallbackHandler(q *tg.CallbackQuery) error {
 	user, err := client.GetUser(q.SenderID)
 	if err != nil {
@@ -19,10 +37,15 @@ func helpCallbackHandler(q *tg.CallbackQuery) error {
 		cmd := strings.TrimPrefix(data, "help_")
 		response := getHelpText(cmd, user.FirstName)
 
+		markup := core.BackHelpMenuKeyboard()
+		if cmd == "all" || cmd == "back" {
+			markup = core.HelpMenuKeyboard()
+		}
+
 		_, err = q.Edit(response, &tg.SendOptions{
 			ParseMode:   "HTML",
 			LinkPreview: false,
-			ReplyMarkup: core.BackHelpMenuKeyboard(),
+			ReplyMarkup: markup,
 		})
 
 		return err
@@ -33,12 +56,12 @@ func helpCallbackHandler(q *tg.CallbackQuery) error {
 
 func getHelpText(cmd string, userName string) string {
 	switch cmd {
-	case "back":
+	case "back", "all":
 		return fmt.Sprintf(
 			"<b>Help Menu</b>\n\n" +
 				"ᴛʜᴇ ɪɴᴛᴇʟʟɪɢᴇɴᴛ ᴍᴜsɪᴄ ᴘʟᴀʏᴇʀ ʙᴏᴛ.\n\n" +
 				"<b>ᴄʟɪᴄᴋ ᴏɴ ᴛʜᴇ ʙᴜᴛᴛᴏɴs ʙᴇʟᴏᴡ</b>\n\n" +
-				"<b>ᴄᴏɴᴛᴀᴄᴛ ᴅᴇᴠᴇʟᴏᴘᴇʀ:</b> <a href='tg://user?id=1082088836'>ɴᴇxғᴀɴɢ</a>",
+				"<b>ᴅᴇᴠᴇʟᴏᴘᴇʀ:</b> <a href='https://t.me/nexfang'>@NexFang</a>",
 		)
 	case "user":
 		return `<b>User Commands</b>

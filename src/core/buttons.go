@@ -17,7 +17,7 @@ var OwnerBtn = tg.Button.Data("Owner", "help_owner")
 var DevsBtn = tg.Button.Data("Devs", "help_devs")
 var PlaylistBtn = tg.Button.Data("Playlist", "help_playlist")
 
-var SourceCodeBtn = tg.Button.URL("Source Code", "https://github.com/FlareBase/MusicFlareBot")
+var SourceCodeBtn = tg.Button.URL("Source Code", "https://github.com/Santo-Philip/Musicflarebot")
 
 func supportRow() *tg.KeyboardBuilder {
 	kb := tg.NewKeyboard()
