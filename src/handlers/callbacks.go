@@ -166,6 +166,7 @@ func playCallbackHandler(q *tg.CallbackQuery) error {
 		return nil
 	}
 
+	_, _ = q.Answer("")
 	text := buildTrackMessage("Now Playing", "▶")
 	_, _ = q.Edit(text, &tg.SendOptions{ReplyMarkup: core.ControlButtons("resume"), ParseMode: "HTML", LinkPreview: false})
 	return nil

@@ -27,31 +27,27 @@ func helpCommandHandler(m *tg.NewMessage) error {
 }
 
 func helpCallbackHandler(q *tg.CallbackQuery) error {
-	user, err := client.GetUser(q.SenderID)
-	if err != nil {
-		return err
-	}
-
 	data := q.DataString()
-	if strings.HasPrefix(data, "help_") {
-		cmd := strings.TrimPrefix(data, "help_")
-		response := getHelpText(cmd, user.FirstName)
-
-		markup := core.BackHelpMenuKeyboard()
-		if cmd == "all" || cmd == "back" {
-			markup = core.HelpMenuKeyboard()
-		}
-
-		_, err = q.Edit(response, &tg.SendOptions{
-			ParseMode:   "HTML",
-			LinkPreview: false,
-			ReplyMarkup: markup,
-		})
-
-		return err
+	if !strings.HasPrefix(data, "help_") {
+		q.Answer("Processing...")
+		return nil
 	}
 
-	return nil
+	cmd := strings.TrimPrefix(data, "help_")
+	response := getHelpText(cmd, "")
+
+	markup := core.BackHelpMenuKeyboard()
+	if cmd == "all" || cmd == "back" {
+		markup = core.HelpMenuKeyboard()
+	}
+
+	q.Answer("")
+	_, err := q.Edit(response, &tg.SendOptions{
+		ParseMode:   "HTML",
+		LinkPreview: false,
+		ReplyMarkup: markup,
+	})
+	return err
 }
 
 func getHelpText(cmd string, userName string) string {
