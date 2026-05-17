@@ -1,7 +1,9 @@
 package src
 
 import (
+	"fmt"
 	"log/slog"
+	"time"
 
 	"musicflarebot/config"
 	"musicflarebot/src/core/db"
@@ -69,10 +71,20 @@ func Init(client *tg.Client) error {
 	loadOwnerSettings()
 	loadDBSessions()
 
+	validSessions := make([]string, 0, len(config.Conf.SessionStrings))
 	for _, session := range config.Conf.SessionStrings {
 		_, err := vc.Calls.StartClient(config.Conf.ApiId, config.Conf.ApiHash, session)
 		if err != nil {
-			return err
+			slog.Error("[Init] Failed to start client, removing session", "error", err)
+			continue
+		}
+		validSessions = append(validSessions, session)
+	}
+	if len(validSessions) != len(config.Conf.SessionStrings) {
+		config.Conf.SessionStrings = validSessions
+		_ = db.Instance.DeleteAllSessionKeys()
+		for _, s := range validSessions {
+			_ = db.Instance.SetSetting(fmt.Sprintf("session_db_%d", time.Now().UnixNano()+int64(len(validSessions))), s)
 		}
 	}
 
