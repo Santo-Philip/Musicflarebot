@@ -1,9 +1,9 @@
 package ubot
 
 import (
+	"fmt"
 	"musicflarebot/src/vc/ntgcalls"
 	"musicflarebot/src/vc/ubot/types"
-	"fmt"
 	"time"
 
 	tg "github.com/amarnathcjd/gogram/telegram"
@@ -20,7 +20,21 @@ func (ctx *Context) connectCall(chatId int64, mediaDescription ntgcalls.MediaDes
 	ctx.waitConnectMu.Lock()
 	ctx.waitConnect[chatId] = make(chan error)
 	ctx.waitConnectMu.Unlock()
-	if chatId >= 0 {
+	// Resolve peer type to reliably detect private vs. group chats.
+	// Basic groups can have a positive ChatID() (same as private chats),
+	// so we cannot rely on chatId >= 0 alone. Using GetInputPeer avoids
+	// that ambiguity.
+	peer, err := ctx.App.GetInputPeer(chatId)
+	isPrivate := false
+	if err == nil {
+		if _, ok := peer.(*tg.InputPeerUser); ok {
+			isPrivate = true
+		}
+	} else {
+		isPrivate = chatId >= 0
+	}
+
+	if isPrivate {
 		defer func() {
 			ctx.p2pConfigsMu.Lock()
 			if ctx.p2pConfigs[chatId] != nil {
