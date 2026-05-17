@@ -114,32 +114,31 @@ func checkBotAdminCB(q *tg.CallbackQuery) bool {
 }
 
 func playMode(m *tg.NewMessage) bool {
-	if IsPrivate(m) {
-		return false
-	}
+    // Allow play command in private chats and groups.
+    // Previously returned false for private chats, causing /play to be ignored.
+    // The command now proceeds with admin checks only for supergroups.
+    chatID := m.ChatID()
 
-	chatID := m.ChatID()
+    if chatID < 0 && !checkBotAdmin(m) {
+        return false
+    }
 
-	if chatID < 0 && !checkBotAdmin(m) {
-		return false
-	}
+    if db.Instance.GetPlayMode(chatID) {
+        admins, err := cache.GetAdmins(client, chatID, false)
+        if err != nil {
+            return false
+        }
 
-	if db.Instance.GetPlayMode(chatID) {
-		admins, err := cache.GetAdmins(client, chatID, false)
-		if err != nil {
-			return false
-		}
+        senderID := m.SenderID()
+        isAdmin := slices.ContainsFunc(admins, func(a *tg.Participant) bool {
+            return a.User != nil && a.User.ID == senderID
+        })
 
-		senderID := m.SenderID()
-		isAdmin := slices.ContainsFunc(admins, func(a *tg.Participant) bool {
-			return a.User != nil && a.User.ID == senderID
-		})
+        if !isAdmin && !db.Instance.IsAuthUser(chatID, senderID) {
+            _, _ = m.Reply("Play mode is enabled. Only administrators and authorized users can start playback.")
+            return false
+        }
+    }
 
-		if !isAdmin && !db.Instance.IsAuthUser(chatID, senderID) {
-			_, _ = m.Reply("Play mode is enabled. Only administrators and authorized users can start playback.")
-			return false
-		}
-	}
-
-	return true
+    return true
 }
