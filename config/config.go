@@ -27,7 +27,7 @@ func LoadConfig() error {
 		Proxy:          os.Getenv("PROXY"),
 		MaxFileSize:    getEnvInt64("MAX_FILE_SIZE"),
 		DownloadsDir:   "downloads",
-		StartImg:       getEnvStr("START_IMG", "https://i.pinimg.com/736x/0d/f4/65/0df465d1e98239ecb6283400605fc813.jpg"),
+		StartImg:       getEnvStr("START_IMG", "https://v1.pinimg.com/videos/iht/expMp4/62/16/5a/62165a0f66af6a0db73b8a7763e8cf30_720w.mp4"),
 		Port:           getEnvStr("PORT", "6060"),
 		AutoLeave:      getEnvBool("AUTO_LEAVE", false),
 	}
