@@ -68,25 +68,25 @@ func handleParticipant(pu *tg.ParticipantUpdate) error {
 	return handleParticipantStatusChange(chatID, userID, ubID, oldStatus, newStatus)
 }
 
-func participantStatusToString(p *tg.ChannelParticipant) string {
+func participantStatusToString(p tg.ChannelParticipant) string {
 	if p == nil {
 		return "left"
 	}
-	switch p.ClassName {
-	case "ChannelParticipantCreator":
+	switch p.(type) {
+	case *tg.ChannelParticipantCreator:
 		return "creator"
-	case "ChannelParticipantAdmin":
+	case *tg.ChannelParticipantAdmin:
 		return "administrator"
-	case "ChannelParticipantBanned":
+	case *tg.ChannelParticipantBanned:
 		return "kicked"
-	case "ChannelParticipantLeft":
+	case *tg.ChannelParticipantLeft:
 		return "left"
 	default:
 		return "member"
 	}
 }
 
-func participantRights(p *tg.ChannelParticipant) *tg.ChatAdminRights {
+func participantRights(p tg.ChannelParticipant) *tg.ChatAdminRights {
 	switch pt := p.(type) {
 	case *tg.ChannelParticipantAdmin:
 		return pt.AdminRights

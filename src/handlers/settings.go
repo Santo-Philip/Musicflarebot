@@ -85,13 +85,14 @@ func settingsCallbackHandler(q *tg.CallbackQuery) error {
 	}
 
 	if !hasPerms {
-		err = q.Answer("You don't have permission to change settings.", &tg.CallbackOptions{Alert: true})
-		return err
+		_, _ = q.Answer("You don't have permission to change settings.", &tg.CallbackOptions{Alert: true})
+		return nil
 	}
 
 	data := q.DataString()
 	if data == "settings_main" {
-		return q.Answer("Update your chat settings")
+		_, _ = q.Answer("Update your chat settings")
+		return nil
 	}
 
 	parts := strings.Split(data, "_")
@@ -116,9 +117,11 @@ func settingsCallbackHandler(q *tg.CallbackQuery) error {
 		}
 		_ = db.Instance.SetAdminMode(chatID, newMode)
 	case "lang":
-		return q.Answer("Language selection is not yet implemented via this menu.", &tg.CallbackOptions{Alert: true})
+		_, _ = q.Answer("Language selection is not yet implemented via this menu.", &tg.CallbackOptions{Alert: true})
+		return nil
 	default:
-		return q.Answer("Unknown setting", &tg.CallbackOptions{Alert: true})
+		_, _ = q.Answer("Unknown setting", &tg.CallbackOptions{Alert: true})
+		return nil
 	}
 
 	getPlayMode := db.Instance.GetPlayMode(chatID)

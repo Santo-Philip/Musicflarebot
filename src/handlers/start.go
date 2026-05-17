@@ -48,7 +48,7 @@ func startHandler(m *tg.NewMessage) error {
 			client.Me().FirstName,
 		)
 
-		_, err := m.ReplyPhoto(config.Conf.StartImg, &tg.MediaOptions{
+		_, err := m.ReplyMedia(config.Conf.StartImg, &tg.MediaOptions{
 			ParseMode:   "HTML",
 			Caption:     response,
 			ReplyMarkup: core.AddMeMarkup(client.Me().Username),
