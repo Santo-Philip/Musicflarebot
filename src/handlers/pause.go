@@ -38,11 +38,6 @@ func resumeHandler(m *tg.NewMessage) error {
 
 	chatID := m.ChatID()
 
-	if chatID > 0 {
-		_, _ = m.Reply("This command can only be used in a supergroup.")
-		return nil
-	}
-
 	if !cache.ChatCache.IsActive(chatID) {
 		_, _ = m.Reply("There is no active playback in the video chat.")
 		return nil

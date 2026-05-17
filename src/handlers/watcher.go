@@ -9,7 +9,7 @@ import (
 func handleVoiceChatMessage(m *tg.NewMessage) error {
 	chatID := m.ChatID()
 
-	if IsPrivate(m) || chatID > 0 {
+	if IsPrivate(m) {
 		return nil
 	}
 
