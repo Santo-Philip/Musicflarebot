@@ -14,7 +14,6 @@ RUN go mod download
 
 COPY . .
 
-RUN go run github.com/AshokShau/gotdbot/scripts/tools@latest
 RUN go run setup_ntgcalls.go
 
 RUN CGO_ENABLED=1 GOOS=linux go build -ldflags="-w -s" -o main .
@@ -47,7 +46,6 @@ ENV PATH="${DENO_INSTALL}/bin:${PATH}"
 ENV HOME="/home/app"
 
 COPY --from=builder --chown=app:app /app/main /usr/local/bin/app
-COPY --from=builder --chown=app:app /app/libtdjson.so.* /home/app/
 
 RUN chown -R app:app /opt/deno
 
