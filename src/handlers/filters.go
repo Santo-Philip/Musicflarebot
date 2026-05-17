@@ -114,9 +114,12 @@ func checkBotAdminCB(q *tg.CallbackQuery) bool {
 }
 
 func playMode(m *tg.NewMessage) bool {
-    // Allow play command in private chats and groups.
-    // Previously returned false for private chats, causing /play to be ignored.
-    // The command now proceeds with admin checks only for supergroups.
+    if IsPrivate(m) {
+        // Private chats lack a voice chat context; inform the user.
+        _, _ = m.Reply("Playback commands work only in group voice chats.")
+        return false
+    }
+    // Allow play command in groups; admin checks apply only for supergroups.
     chatID := m.ChatID()
 
     if chatID < 0 && !checkBotAdmin(m) {
