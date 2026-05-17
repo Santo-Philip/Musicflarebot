@@ -19,17 +19,23 @@ var PlaylistBtn = tg.Button.Data("Playlist", "help_playlist")
 
 var SourceCodeBtn = tg.Button.URL("Source Code", "https://github.com/FlareBase/MusicFlareBot")
 
-func SupportKeyboard() *tg.ReplyInlineMarkup {
-	channelBtn := tg.Button.URL("Updates", config.Conf.SupportChannel)
-	groupBtn := tg.Button.URL("Group", config.Conf.SupportGroup)
+func supportRow() *tg.KeyboardBuilder {
+	kb := tg.NewKeyboard()
+	if config.Conf.SupportChannel != "" {
+		kb.AddRow(tg.Button.URL("Updates", config.Conf.SupportChannel))
+	}
+	if config.Conf.SupportGroup != "" {
+		kb.AddRow(tg.Button.URL("Group", config.Conf.SupportGroup))
+	}
+	return kb
+}
 
-	return tg.NewKeyboard().AddRow(channelBtn, groupBtn).AddRow(CloseBtn).Build()
+func SupportKeyboard() *tg.ReplyInlineMarkup {
+	return supportRow().AddRow(CloseBtn).Build()
 }
 
 func SupportBtn() *tg.ReplyInlineMarkup {
-	channelBtn := tg.Button.URL("Updates", config.Conf.SupportChannel)
-	groupBtn := tg.Button.URL("Group", config.Conf.SupportGroup)
-	return tg.NewKeyboard().AddRow(channelBtn, groupBtn).Build()
+	return supportRow().Build()
 }
 
 func SettingsKeyboard(playMode, adminMode string, cmdDelete bool, language string) *tg.ReplyInlineMarkup {
@@ -125,13 +131,16 @@ func AddMeMarkup(username string) *tg.ReplyInlineMarkup {
 		fmt.Sprintf("https://t.me/%s?startgroup=true", username),
 	)
 
-	channelBtn := tg.Button.URL("Updates", config.Conf.SupportChannel)
-	groupBtn := tg.Button.URL("Group", config.Conf.SupportGroup)
-
-	return tg.NewKeyboard().
-		AddRow(addMeBtn).
-		AddRow(HelpBtn).
-		AddRow(channelBtn, groupBtn).
-		AddRow(SourceCodeBtn).
-		Build()
+	kb := tg.NewKeyboard().AddRow(addMeBtn).AddRow(HelpBtn)
+	row := make([]tg.KeyboardButton, 0, 2)
+	if config.Conf.SupportChannel != "" {
+		row = append(row, tg.Button.URL("Updates", config.Conf.SupportChannel))
+	}
+	if config.Conf.SupportGroup != "" {
+		row = append(row, tg.Button.URL("Group", config.Conf.SupportGroup))
+	}
+	if len(row) > 0 {
+		kb.AddRow(row...)
+	}
+	return kb.AddRow(SourceCodeBtn).Build()
 }
