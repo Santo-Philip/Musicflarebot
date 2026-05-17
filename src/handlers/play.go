@@ -18,7 +18,6 @@ import (
 )
 
 func playHandler(m *tg.NewMessage) error {
-	m.Reply("playHandler called") // DEBUG
 	if !playMode(m) {
 		return nil
 	}

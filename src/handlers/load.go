@@ -77,25 +77,7 @@ func LoadModules(c *tg.Client) {
 	c.OnCommand("cancel", cancelAddAccHandler)
 	c.OnCommand("listacc", listAccHandler)
 	c.OnCommand("removeacc", removeAccHandler)
-
-	c.OnCallback("", func(q *tg.CallbackQuery) error {
-		data := q.DataString()
-		switch {
-		case data == "help_back":
-			return helpCallbackHandler(q)
-		case data == "vcplay_close":
-			return vcPlayHandler(q)
-		case data == "help_all" || data == "help_user" || data == "help_admin" || data == "help_owner" || data == "help_devs" || data == "help_playlist":
-			return helpCallbackHandler(q)
-		case data == "settings_main" || data == "settings_delete" || data == "settings_play" || data == "settings_admin" || data == "settings_lang":
-			return settingsCallbackHandler(q)
-		default:
-			if len(data) > 5 && data[:5] == "play_" {
-				return playCallbackHandler(q)
-			}
-			return nil
-		}
-	})
+	c.OnCommand("setcookies", setCookiesHandler)
 
 	c.OnMessage("", func(m *tg.NewMessage) error {
 		if err := handleVoiceChatMessage(m); err != nil {
