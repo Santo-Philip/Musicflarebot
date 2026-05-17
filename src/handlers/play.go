@@ -18,7 +18,9 @@ import (
 )
 
 func playHandler(m *tg.NewMessage) error {
+	slog.Debug("playHandler called", "chatID", m.ChatID(), "text", m.Text(), "sender", m.SenderID())
 	if !playMode(m) {
+		slog.Debug("playHandler: playMode returned false")
 		return nil
 	}
 	return handlePlay(m, false)
@@ -33,6 +35,7 @@ func vPlayHandler(m *tg.NewMessage) error {
 
 func handlePlay(m *tg.NewMessage, isVideo bool) error {
 	chatID := m.ChatID()
+	slog.Debug("handlePlay called", "chatID", chatID, "isVideo", isVideo)
 
 	if qLen := cache.ChatCache.GetQueueLength(chatID); qLen > 10 {
 		_, _ = m.Reply("Queue is full (max 10 tracks). Use /end to clear.")

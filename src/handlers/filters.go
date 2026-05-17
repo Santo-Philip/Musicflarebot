@@ -14,8 +14,11 @@ import (
 
 func checkBotAdmin(m *tg.NewMessage) bool {
 	chatID := m.ChatID()
-	botStatus, err := cache.GetUserAdmin(client, chatID, client.Me().ID, false)
+	botID := client.Me().ID
+	slog.Debug("checkBotAdmin", "chatID", chatID, "botID", botID)
+	botStatus, err := cache.GetUserAdmin(client, chatID, botID, false)
 	if err != nil {
+		slog.Warn("checkBotAdmin: GetUserAdmin error", "error", err, "chatID", chatID, "botID", botID)
 		if strings.Contains(err.Error(), "is not an admin in chat") {
 			_, _ = m.Reply("Bot is not an administrator in this chat. Please promote the bot with invite users permission.")
 		} else {
