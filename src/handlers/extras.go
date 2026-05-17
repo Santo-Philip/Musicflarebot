@@ -48,6 +48,25 @@ func IsPrivate(m *tg.NewMessage) bool {
 	return m.ChatID() > 0
 }
 
+// IsGroup returns true if the message is from a group chat (either regular group or supergroup)
+func IsGroup(m *tg.NewMessage) bool {
+	return m.ChatID() < 0
+}
+
+// IsSuperGroup returns true if the message is from a supergroup
+func IsSuperGroup(m *tg.NewMessage) bool {
+	// Supergroups have chat IDs that are negative and their absolute value is > 1000000000
+	chatID := m.ChatID()
+	return chatID < -1000000000
+}
+
+// IsRegularGroup returns true if the message is from a regular group (not supergroup)
+func IsRegularGroup(m *tg.NewMessage) bool {
+	// Regular groups have chat IDs that are negative but their absolute value is < 1000000000
+	chatID := m.ChatID()
+	return chatID < 0 && chatID > -1000000000
+}
+
 func getTargetUserID(m *tg.NewMessage) (int64, error) {
 	if m.ReplyToMsgID() != 0 {
 		return resolveFromReply(m)

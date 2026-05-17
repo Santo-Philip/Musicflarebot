@@ -127,8 +127,53 @@ func startHandler(m *tg.NewMessage) error {
 		})
 
 		return err
+	} else if IsSuperGroup(m) {
+		// Handle supergroup
+		go func(chatID int64) {
+			_ = db.Instance.AddChat(chatID)
+		}(chatID)
+
+		uptime := getFormattedDuration(time.Since(startTime))
+		response := fmt.Sprintf(
+			"<b>🎵 %s is ready</b> (Supergroup Mode)\n"+
+				"<b>Uptime:</b> <code>%s</code>\n\n"+
+				"<i>A music player bot with some awesome and useful features.</i>",
+			client.Me().FirstName,
+			uptime,
+		)
+
+		_, err := m.Reply(response, &tg.SendOptions{
+			ParseMode:   "HTML",
+			LinkPreview: false,
+			ReplyMarkup: core.SupportBtn(),
+		})
+
+		return err
+	} else if IsRegularGroup(m) {
+		// Handle regular group
+		go func(chatID int64) {
+			_ = db.Instance.AddChat(chatID)
+		}(chatID)
+
+		uptime := getFormattedDuration(time.Since(startTime))
+		response := fmt.Sprintf(
+			"<b>🎵 %s is ready</b> (Group Mode)\n"+
+				"<b>Uptime:</b> <code>%s</code>\n\n"+
+				"<i>A music player bot with some awesome and useful features.</i>",
+			client.Me().FirstName,
+			uptime,
+		)
+
+		_, err := m.Reply(response, &tg.SendOptions{
+			ParseMode:   "HTML",
+			LinkPreview: false,
+			ReplyMarkup: core.SupportBtn(),
+		})
+
+		return err
 	}
 
+	// Fallback for any other chat type
 	go func(chatID int64) {
 		_ = db.Instance.AddChat(chatID)
 	}(chatID)

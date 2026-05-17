@@ -49,8 +49,10 @@ func adminMode(m *tg.NewMessage) bool {
 
 	chatID := m.ChatID()
 
-	if chatID < 0 && !checkBotAdmin(m) {
-		return false
+	if IsSuperGroup(m) || IsRegularGroup(m) {
+		if !checkBotAdmin(m) {
+			return false
+		}
 	}
 
 	userID := m.SenderID()
@@ -72,7 +74,11 @@ func adminMode(m *tg.NewMessage) bool {
 func adminModeCB(q *tg.CallbackQuery) bool {
 	chatID := q.ChatID
 
-	if chatID < 0 && !checkBotAdminCB(q) {
+	if chatID > 0 {
+		return false
+	}
+
+	if (chatID < -1000000000 || chatID > -1000000000) && !checkBotAdminCB(q) {
 		return false
 	}
 
@@ -114,34 +120,36 @@ func checkBotAdminCB(q *tg.CallbackQuery) bool {
 }
 
 func playMode(m *tg.NewMessage) bool {
-    if IsPrivate(m) {
-        // Private chats lack a voice chat context; inform the user.
-        _, _ = m.Reply("Playback commands work only in group voice chats.")
-        return false
-    }
-    // Allow play command in groups; admin checks apply only for supergroups.
-    chatID := m.ChatID()
+	if IsPrivate(m) {
+		// Private chats lack a voice chat context; inform the user.
+		_, _ = m.Reply("Playback commands work only in group voice chats.")
+		return false
+	}
+	// Allow play command in groups; admin checks apply only for supergroups.
+	chatID := m.ChatID()
 
-    if chatID < 0 && !checkBotAdmin(m) {
-        return false
-    }
+	if IsSuperGroup(m) || IsRegularGroup(m) {
+		if !checkBotAdmin(m) {
+			return false
+		}
+	}
 
-    if db.Instance.GetPlayMode(chatID) {
-        admins, err := cache.GetAdmins(client, chatID, false)
-        if err != nil {
-            return false
-        }
+	if db.Instance.GetPlayMode(chatID) {
+		admins, err := cache.GetAdmins(client, chatID, false)
+		if err != nil {
+			return false
+		}
 
-        senderID := m.SenderID()
-        isAdmin := slices.ContainsFunc(admins, func(a *tg.Participant) bool {
-            return a.User != nil && a.User.ID == senderID
-        })
+		senderID := m.SenderID()
+		isAdmin := slices.ContainsFunc(admins, func(a *tg.Participant) bool {
+			return a.User != nil && a.User.ID == senderID
+		})
 
-        if !isAdmin && !db.Instance.IsAuthUser(chatID, senderID) {
-            _, _ = m.Reply("Play mode is enabled. Only administrators and authorized users can start playback.")
-            return false
-        }
-    }
+		if !isAdmin && !db.Instance.IsAuthUser(chatID, senderID) {
+			_, _ = m.Reply("Play mode is enabled. Only administrators and authorized users can start playback.")
+			return false
+		}
+	}
 
-    return true
+	return true
 }
