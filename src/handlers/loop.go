@@ -1,49 +1,40 @@
-/*
- * TgMusicBot - Telegram Music Bot
- *  Copyright (c) 2025-2026 Ashok Shau
- *
- *  Licensed under GNU GPL v3
- *  See https://github.com/AshokShau/TgMusicBot
- */
-
 package handlers
 
 import (
 	"fmt"
 	"strconv"
 
-	"ashokshau/tgmusic/src/core/cache"
+	"musicflarebot/src/core/cache"
 
-	td "github.com/AshokShau/gotdbot"
+	tg "github.com/amarnathcjd/gogram/telegram"
 )
 
-func loopHandler(c *td.Client, ctx *td.Context) error {
-	if !adminMode(c, ctx) {
-		return td.EndGroups
+func loopHandler(m *tg.NewMessage) error {
+	if !adminMode(m) {
+		return nil
 	}
 
-	m := ctx.EffectiveMessage
-	chatID := m.ChatId
+	chatID := m.ChatID()
 
 	if !cache.ChatCache.IsActive(chatID) {
-		_, err := m.ReplyText(c, "There is no active playback in the video chat.", nil)
+		_, err := m.Reply("There is no active playback in the video chat.")
 		return err
 	}
 
 	args := Args(m)
 	if args == "" {
-		_, err := m.ReplyText(c, "<b>Loop Control</b>\n\n<b>Usage:</b> <code>/loop [count]</code>\n0 to disable looping\n1-10 to set the number of repeats", &td.SendTextMessageOpts{ParseMode: "HTML"})
+		_, err := m.Reply("<b>Loop Control</b>\n\n<b>Usage:</b> <code>/loop [count]</code>\n0 to disable looping\n1-10 to set the number of repeats", &tg.SendOptions{ParseMode: "HTML"})
 		return err
 	}
 
 	argsInt, err := strconv.Atoi(args)
 	if err != nil {
-		_, _ = m.ReplyText(c, "Invalid loop value. Please provide a number between 0 and 10.", nil)
+		_, _ = m.Reply("Invalid loop value. Please provide a number between 0 and 10.")
 		return nil
 	}
 
 	if argsInt < 0 || argsInt > 10 {
-		_, err = m.ReplyText(c, "Loop count must be between 0 and 10.", nil)
+		_, err = m.Reply("Loop count must be between 0 and 10.")
 		return err
 	}
 
@@ -56,6 +47,6 @@ func loopHandler(c *td.Client, ctx *td.Context) error {
 		action = fmt.Sprintf("Looping has been set to %d time(s)", argsInt)
 	}
 
-	_, err = m.ReplyText(c, fmt.Sprintf("%s.\nChanged by: %s", action, firstName(c, m)), nil)
+	_, err = m.Reply(fmt.Sprintf("%s.\nChanged by: %s", action, firstName(m)))
 	return err
 }

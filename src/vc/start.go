@@ -1,9 +1,9 @@
 package vc
 
 import (
-	"ashokshau/tgmusic/config"
-	"ashokshau/tgmusic/src/vc/sessions"
-	"ashokshau/tgmusic/src/vc/ubot"
+	"musicflarebot/config"
+	"musicflarebot/src/vc/sessions"
+	"musicflarebot/src/vc/ubot"
 	"fmt"
 	"log/slog"
 
@@ -99,9 +99,37 @@ func (c *TelegramCalls) StartClient(apiID int32, apiHash, stringSession string) 
 	defer c.mu.Unlock()
 	c.uBContext[clientIndex] = call
 	c.clients[clientIndex] = mtProto
+	c.clientsBySession[stringSession] = clientIndex
 
 	logger.Info("[TelegramCalls] Client started", "client", clientName, "id", me.ID, "username", me.Username)
 	return call, nil
+}
+
+// StopClient stops a specific userbot client identified by its session string.
+func (c *TelegramCalls) StopClient(sessionStr string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	idx, ok := c.clientsBySession[sessionStr]
+	if !ok {
+		return fmt.Errorf("client for session string not found")
+	}
+
+	if cl, ok := c.clients[idx]; ok {
+		slog.Info("[TelegramCalls] Stopping client", "index", idx)
+		if err := cl.Stop(); err != nil {
+			slog.Warn("[TelegramCalls] Error stopping client", "index", idx, "error", err)
+		}
+		delete(c.clients, idx)
+	}
+
+	if ctx, ok := c.uBContext[idx]; ok {
+		ctx.Close()
+		delete(c.uBContext, idx)
+	}
+
+	delete(c.clientsBySession, sessionStr)
+	return nil
 }
 
 // StopAllClients gracefully stops all active userbot clients and their associated voice calls.

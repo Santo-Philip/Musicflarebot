@@ -1,45 +1,30 @@
-/*
- * TgMusicBot - Telegram Music Bot
- *  Copyright (c) 2025-2026 Ashok Shau
- *
- *  Licensed under GNU GPL v3
- *  See https://github.com/AshokShau/TgMusicBot
- */
-
 package db
 
 import (
-	"ashokshau/tgmusic/src/core/cache"
-
-	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"musicflarebot/src/core/cache"
 )
 
-// AddAuthUser adds a user to the list of authorized users for a chat.
 func (db *Database) AddAuthUser(chatID, userID int64) error {
 	ctx, cancel := db.ctx()
 	defer cancel()
 
-	_, err := db.authDB.UpdateOne(ctx,
-		bson.M{"_id": chatID},
-		bson.M{"$addToSet": bson.M{"user_ids": userID}},
-		options.UpdateOne().SetUpsert(true),
+	_, err := db.pool.Exec(ctx,
+		`INSERT INTO auth_users (chat_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+		chatID, userID,
 	)
-
 	if err == nil {
 		db.authCache.Delete(toKey(chatID))
 	}
 	return err
 }
 
-// RemoveAuthUser removes a user from the list of authorized users for a chat.
 func (db *Database) RemoveAuthUser(chatID, userID int64) error {
 	ctx, cancel := db.ctx()
 	defer cancel()
 
-	_, err := db.authDB.UpdateOne(ctx,
-		bson.M{"_id": chatID},
-		bson.M{"$pull": bson.M{"user_ids": userID}},
+	_, err := db.pool.Exec(ctx,
+		`DELETE FROM auth_users WHERE chat_id = $1 AND user_id = $2`,
+		chatID, userID,
 	)
 	if err == nil {
 		db.authCache.Delete(toKey(chatID))
@@ -47,7 +32,6 @@ func (db *Database) RemoveAuthUser(chatID, userID int64) error {
 	return err
 }
 
-// GetAuthUsers retrieves a list of all authorized users for a chat.
 func (db *Database) GetAuthUsers(chatID int64) []int64 {
 	key := toKey(chatID)
 	if cached, ok := db.authCache.Get(key); ok {
@@ -57,33 +41,37 @@ func (db *Database) GetAuthUsers(chatID int64) []int64 {
 	ctx, cancel := db.ctx()
 	defer cancel()
 
-	var doc struct {
-		UserIDs []int64 `bson:"user_ids"`
-	}
-	err := db.authDB.FindOne(ctx, bson.M{"_id": chatID}).Decode(&doc)
+	rows, err := db.pool.Query(ctx, `SELECT user_id FROM auth_users WHERE chat_id = $1`, chatID)
 	if err != nil {
 		return []int64{}
 	}
-	db.authCache.Set(key, doc.UserIDs)
-	return doc.UserIDs
+	defer rows.Close()
+
+	var users []int64
+	for rows.Next() {
+		var uid int64
+		if err := rows.Scan(&uid); err != nil {
+			return []int64{}
+		}
+		users = append(users, uid)
+	}
+
+	db.authCache.Set(key, users)
+	return users
 }
 
-// IsAuthUser checks if a specific user is in the list of authorized users for a chat.
 func (db *Database) IsAuthUser(chatID, userID int64) bool {
 	admins, err := cache.GetChatAdminIDs(chatID)
 	if err != nil || admins == nil {
 		admins = []int64{}
 	}
-
 	if contains(admins, userID) {
 		return true
 	}
-
 	users := db.GetAuthUsers(chatID)
 	return contains(users, userID)
 }
 
-// IsAdmin checks if a specific user is an administrator in a chat.
 func (db *Database) IsAdmin(chatID, userID int64) bool {
 	admins, err := cache.GetChatAdminIDs(chatID)
 	if err != nil || admins == nil {

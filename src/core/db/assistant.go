@@ -1,114 +1,110 @@
-/*
- * TgMusicBot - Telegram Music Bot
- *  Copyright (c) 2025-2026 Ashok Shau
- *
- *  Licensed under GNU GPL v3
- *  See https://github.com/AshokShau/TgMusicBot
- */
-
 package db
 
 import (
 	"errors"
 	"log/slog"
 
-	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"github.com/jackc/pgx/v5"
 )
 
-// GetAssistant retrieves the index of the assistant for a chat.
-// Returns -1 if no assistant is assigned.
 func (db *Database) GetAssistant(chatID int64) (int, error) {
 	key := toKey(chatID)
 	if cached, ok := db.assistantCache.Get(key); ok {
 		return cached, nil
 	}
-	var doc struct {
-		Num int `bson:"num"`
-	}
 
 	ctx, cancel := db.ctx()
 	defer cancel()
 
-	err := db.assistantDB.FindOne(ctx, bson.M{"_id": chatID}).Decode(&doc)
+	var num int
+	err := db.pool.QueryRow(ctx,
+		`SELECT num FROM assistant_assignments WHERE chat_id = $1`, chatID,
+	).Scan(&num)
+
 	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return -1, nil
 		}
 		return -1, err
 	}
-	db.assistantCache.Set(key, doc.Num)
-	return doc.Num, nil
+
+	db.assistantCache.Set(key, num)
+	return num, nil
 }
 
-// SetAssistant sets the assistant index for a given chat.
 func (db *Database) SetAssistant(chatID int64, num int) error {
 	ctx, cancel := db.ctx()
 	defer cancel()
 
-	_, err := db.assistantDB.UpdateOne(ctx, bson.M{"_id": chatID}, bson.M{"$set": bson.M{"num": num}}, options.UpdateOne().SetUpsert(true))
+	_, err := db.pool.Exec(ctx,
+		`INSERT INTO assistant_assignments (chat_id, num) VALUES ($1, $2) ON CONFLICT (chat_id) DO UPDATE SET num = $2`,
+		chatID, num,
+	)
 	if err == nil {
 		db.assistantCache.Set(toKey(chatID), num)
 	}
-
 	return err
 }
 
-// RemoveAssistant removes the assistant from a chat's settings.
 func (db *Database) RemoveAssistant(chatID int64) error {
 	ctx, cancel := db.ctx()
 	defer cancel()
 
-	_, err := db.assistantDB.DeleteOne(ctx, bson.M{"_id": chatID})
+	_, err := db.pool.Exec(ctx,
+		`DELETE FROM assistant_assignments WHERE chat_id = $1`, chatID,
+	)
 	if err == nil {
 		db.assistantCache.Delete(toKey(chatID))
 	}
 	return err
 }
 
-// AssignAssistant attempts to set the assistant for a chat if it is not currently set.
 func (db *Database) AssignAssistant(chatID int64, proposedAssistant int) (int, error) {
 	ctx, cancel := db.ctx()
 	defer cancel()
 
-	filter := bson.M{
-		"_id": chatID,
-		"$or": bson.A{
-			bson.M{"num": bson.M{"$exists": false}},
-			bson.M{"num": -1},
-		},
-	}
-	update := bson.M{"$set": bson.M{"num": proposedAssistant}}
-	opts := options.UpdateOne().SetUpsert(true)
-
-	result, err := db.assistantDB.UpdateOne(ctx, filter, update, opts)
+	tx, err := db.pool.Begin(ctx)
 	if err != nil {
-		if mongo.IsDuplicateKeyError(err) {
-			return db.GetAssistant(chatID)
-		}
+		return -1, err
+	}
+	defer tx.Rollback(ctx)
+
+	var existingNum int
+	err = tx.QueryRow(ctx,
+		`SELECT num FROM assistant_assignments WHERE chat_id = $1 FOR UPDATE`, chatID,
+	).Scan(&existingNum)
+
+	if err == nil && existingNum != -1 {
+		tx.Commit(ctx)
+		return existingNum, nil
+	}
+
+	_, err = tx.Exec(ctx,
+		`INSERT INTO assistant_assignments (chat_id, num) VALUES ($1, $2) ON CONFLICT (chat_id) DO UPDATE SET num = $2`,
+		chatID, proposedAssistant,
+	)
+	if err != nil {
 		return -1, err
 	}
 
-	if result.ModifiedCount > 0 || result.UpsertedCount > 0 {
-		db.assistantCache.Set(toKey(chatID), proposedAssistant)
-		return proposedAssistant, nil
+	if err := tx.Commit(ctx); err != nil {
+		return -1, err
 	}
 
-	return db.GetAssistant(chatID)
+	db.assistantCache.Set(toKey(chatID), proposedAssistant)
+	return proposedAssistant, nil
 }
 
-// ClearAllAssistants removes all assistant assignments.
 func (db *Database) ClearAllAssistants() (int64, error) {
 	ctx, cancel := db.ctx()
 	defer cancel()
 
-	result, err := db.assistantDB.DeleteMany(ctx, bson.M{})
+	result, err := db.pool.Exec(ctx, `DELETE FROM assistant_assignments`)
 	if err != nil {
 		slog.Info("[DB] Error clearing assistants", "error", err)
 		return 0, err
 	}
 
 	db.assistantCache.Clear()
-	return result.DeletedCount, nil
+	return result.RowsAffected(), nil
 }

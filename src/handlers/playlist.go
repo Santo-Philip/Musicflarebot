@@ -1,11 +1,3 @@
-/*
- * TgMusicBot - Telegram Music Bot
- *  Copyright (c) 2025-2026 Ashok Shau
- *
- *  Licensed under GNU GPL v3
- *  See https://github.com/AshokShau/TgMusicBot
- */
-
 package handlers
 
 import (
@@ -13,31 +5,30 @@ import (
 	"strconv"
 	"strings"
 
-	"ashokshau/tgmusic/src/core/db"
-	"ashokshau/tgmusic/src/core/dl"
+	"musicflarebot/src/core/db"
+	"musicflarebot/src/core/dl"
 
-	td "github.com/AshokShau/gotdbot"
+	tg "github.com/amarnathcjd/gogram/telegram"
 )
 
-func createPlaylistHandler(c *td.Client, ctx *td.Context) error {
-	m := ctx.EffectiveMessage
+func createPlaylistHandler(m *tg.NewMessage) error {
 	userID := m.SenderID()
 
 	args := Args(m)
 	if args == "" {
-		_, err := m.ReplyText(c, "<b>Usage:</b> /createplaylist [playlist name]", replyOpts)
+		_, err := m.Reply("<b>Usage:</b> /createplaylist [playlist name]", replyOpts)
 		return err
 	}
 
 	userPlaylists, err := db.Instance.GetUserPlaylists(userID)
 	if err != nil {
-		_, err = m.ReplyText(c, "Unable to fetch your playlists. Please try again later.", nil)
+		_, err = m.Reply("Unable to fetch your playlists. Please try again later.")
 		return err
 	}
 
 	if len(userPlaylists) >= 10 {
-		_, _ = m.ReplyText(c, "You have reached the maximum limit of 10 playlists.", nil)
-		return td.EndGroups
+		_, _ = m.Reply("You have reached the maximum limit of 10 playlists.")
+		return nil
 	}
 
 	if len([]rune(args)) > 40 {
@@ -46,12 +37,11 @@ func createPlaylistHandler(c *td.Client, ctx *td.Context) error {
 
 	playlistID, err := db.Instance.CreatePlaylist(args, userID)
 	if err != nil {
-		_, err = m.ReplyText(c, fmt.Sprintf("Failed to create playlist: %s", err.Error()), nil)
+		_, err = m.Reply(fmt.Sprintf("Failed to create playlist: %s", err.Error()))
 		return err
 	}
 
-	_, err = m.ReplyText(
-		c,
+	_, err = m.Reply(
 		fmt.Sprintf(
 			"Playlist <b>%s</b> has been created successfully.\nID: <code>%s</code>",
 			args,
@@ -60,70 +50,60 @@ func createPlaylistHandler(c *td.Client, ctx *td.Context) error {
 		replyOpts,
 	)
 
-	return td.EndGroups
+	return nil
 }
 
-func deletePlaylistHandler(c *td.Client, ctx *td.Context) error {
-	m := ctx.EffectiveMessage
+func deletePlaylistHandler(m *tg.NewMessage) error {
 	userID := m.SenderID()
 
 	args := Args(m)
 	if args == "" {
-		_, err := m.ReplyText(
-			c,
+		_, err := m.Reply(
 			"<b>Usage:</b> /deleteplaylist [playlist id]",
-			&td.SendTextMessageOpts{ParseMode: "HTML"},
+			&tg.SendOptions{ParseMode: "HTML"},
 		)
 		return err
 	}
 
 	playlist, err := db.Instance.GetPlaylist(args)
 	if err != nil {
-		_, err := m.ReplyText(
-			c,
+		_, err := m.Reply(
 			"The specified playlist could not be found. Please check the playlist ID.",
-			nil,
 		)
 		return err
 	}
 
 	if playlist.UserID != userID {
-		_, err := m.ReplyText(
-			c,
+		_, err := m.Reply(
 			"You can only delete playlists that you created.",
-			nil,
 		)
 		return err
 	}
 
 	err = db.Instance.DeletePlaylist(args, userID)
 	if err != nil {
-		_, err := m.ReplyText(
-			c,
+		_, err := m.Reply(
 			fmt.Sprintf("Failed to delete the playlist: %s", err.Error()),
-			nil,
 		)
 		return err
 	}
 
-	_, err = m.ReplyText(
-		c,
+	_, err = m.Reply(
 		fmt.Sprintf("Playlist <b>%s</b> has been deleted successfully.", playlist.Name),
-		&td.SendTextMessageOpts{ParseMode: "HTML"},
+		&tg.SendOptions{ParseMode: "HTML"},
 	)
 
 	return err
 }
-func addToPlaylistHandler(c *td.Client, ctx *td.Context) error {
-	m := ctx.EffectiveMessage
+
+func addToPlaylistHandler(m *tg.NewMessage) error {
 	userID := m.SenderID()
 
 	args := strings.SplitN(Args(m), " ", 2)
 	if len(args) != 2 {
-		_, err := m.ReplyText(
-			c,
+		_, err := m.Reply(
 			"<b>Usage:</b> /addtoplaylist [playlist id] [song url]",
-			&td.SendTextMessageOpts{ParseMode: "HTML"},
+			&tg.SendOptions{ParseMode: "HTML"},
 		)
 		return err
 	}
@@ -133,48 +113,38 @@ func addToPlaylistHandler(c *td.Client, ctx *td.Context) error {
 
 	playlist, err := db.Instance.GetPlaylist(playlistID)
 	if err != nil {
-		_, err := m.ReplyText(
-			c,
+		_, err := m.Reply(
 			"The specified playlist could not be found. Please verify the playlist ID.",
-			nil,
 		)
 		return err
 	}
 
 	if playlist.UserID != userID {
-		_, err := m.ReplyText(
-			c,
+		_, err := m.Reply(
 			"You can only modify playlists that you created.",
-			nil,
 		)
 		return err
 	}
 
 	wrapper := dl.NewDownloaderWrapper(songURL)
 	if !wrapper.IsValid() {
-		_, err := m.ReplyText(
-			c,
+		_, err := m.Reply(
 			"The provided URL is invalid or the platform is not supported.",
-			nil,
 		)
 		return err
 	}
 
 	trackInfo, err := wrapper.GetInfo()
 	if err != nil {
-		_, err := m.ReplyText(
-			c,
+		_, err := m.Reply(
 			fmt.Sprintf("Unable to retrieve track information: %s", err.Error()),
-			nil,
 		)
 		return err
 	}
 
 	if trackInfo.Results == nil || len(trackInfo.Results) == 0 {
-		_, err := m.ReplyText(
-			c,
+		_, err := m.Reply(
 			"No playable tracks were found for the provided link.",
-			nil,
 		)
 		return err
 	}
@@ -189,16 +159,13 @@ func addToPlaylistHandler(c *td.Client, ctx *td.Context) error {
 
 	err = db.Instance.AddSongToPlaylist(playlistID, song)
 	if err != nil {
-		_, err := m.ReplyText(
-			c,
+		_, err := m.Reply(
 			fmt.Sprintf("Failed to add the track to the playlist: %s", err.Error()),
-			nil,
 		)
 		return err
 	}
 
-	_, err = m.ReplyText(
-		c,
+	_, err = m.Reply(
 		fmt.Sprintf(
 			"Track <b>%s</b> has been added to playlist <b>%s</b>.",
 			song.Name,
@@ -210,16 +177,14 @@ func addToPlaylistHandler(c *td.Client, ctx *td.Context) error {
 	return err
 }
 
-func removeFromPlaylistHandler(c *td.Client, ctx *td.Context) error {
-	m := ctx.EffectiveMessage
+func removeFromPlaylistHandler(m *tg.NewMessage) error {
 	userID := m.SenderID()
 
 	args := strings.SplitN(Args(m), " ", 2)
 	if len(args) != 2 {
-		_, err := m.ReplyText(
-			c,
+		_, err := m.Reply(
 			"<b>Usage:</b> /removefromplaylist [playlist id] [song number or url]",
-			&td.SendTextMessageOpts{ParseMode: "HTML"},
+			&tg.SendOptions{ParseMode: "HTML"},
 		)
 		return err
 	}
@@ -229,12 +194,12 @@ func removeFromPlaylistHandler(c *td.Client, ctx *td.Context) error {
 
 	playlist, err := db.Instance.GetPlaylist(playlistID)
 	if err != nil {
-		_, err = m.ReplyText(c, "Playlist not found.", nil)
+		_, err = m.Reply("Playlist not found.")
 		return err
 	}
 
 	if playlist.UserID != userID {
-		_, err = m.ReplyText(c, "You do not own this playlist.", nil)
+		_, err = m.Reply("You do not own this playlist.")
 		return err
 	}
 
@@ -243,7 +208,7 @@ func removeFromPlaylistHandler(c *td.Client, ctx *td.Context) error {
 
 	if err == nil {
 		if songIndex < 1 || songIndex > len(playlist.Songs) {
-			_, err := m.ReplyText(c, "Invalid song number.", nil)
+			_, err := m.Reply("Invalid song number.")
 			return err
 		}
 		trackID = playlist.Songs[songIndex-1].TrackID
@@ -257,36 +222,33 @@ func removeFromPlaylistHandler(c *td.Client, ctx *td.Context) error {
 	}
 
 	if trackID == "" {
-		_, err = m.ReplyText(c, "Song not found in playlist.", nil)
+		_, err = m.Reply("Song not found in playlist.")
 		return err
 	}
 
 	err = db.Instance.RemoveSongFromPlaylist(playlistID, trackID)
 	if err != nil {
-		_, err = m.ReplyText(c, fmt.Sprintf("Error removing song: %s", err.Error()), nil)
+		_, err = m.Reply(fmt.Sprintf("Error removing song: %s", err.Error()))
 		return err
 	}
 
-	_, err = m.ReplyText(c, fmt.Sprintf("Song removed from playlist '%s'.", playlist.Name), nil)
+	_, err = m.Reply(fmt.Sprintf("Song removed from playlist '%s'.", playlist.Name))
 	return err
 }
 
-func playlistInfoHandler(c *td.Client, ctx *td.Context) error {
-	m := ctx.EffectiveMessage
-
+func playlistInfoHandler(m *tg.NewMessage) error {
 	args := Args(m)
 	if args == "" {
-		_, err := m.ReplyText(
-			c,
+		_, err := m.Reply(
 			"<b>Usage:</b> /playlistinfo [playlist id]",
-			&td.SendTextMessageOpts{ParseMode: "HTML"},
+			&tg.SendOptions{ParseMode: "HTML"},
 		)
 		return err
 	}
 
 	playlist, err := db.Instance.GetPlaylist(args)
 	if err != nil {
-		_, err = m.ReplyText(c, "Playlist not found.", nil)
+		_, err = m.Reply("Playlist not found.")
 		return err
 	}
 
@@ -295,13 +257,12 @@ func playlistInfoHandler(c *td.Client, ctx *td.Context) error {
 		songs = append(songs, fmt.Sprintf("%d. %s (%s)", i+1, song.Name, song.URL))
 	}
 
-	owner, err := c.GetUser(playlist.UserID)
+	owner, err := client.GetUser(playlist.UserID)
 	if err != nil {
-		return td.EndGroups
+		return nil
 	}
 
-	_, err = m.ReplyText(
-		c,
+	_, err = m.Reply(
 		fmt.Sprintf(
 			"<b>Playlist Info</b>\n\n<b>Name:</b> %s\n<b>Owner:</b> %s\n<b>Songs:</b> %d\n\n%s",
 			playlist.Name,
@@ -309,23 +270,22 @@ func playlistInfoHandler(c *td.Client, ctx *td.Context) error {
 			len(playlist.Songs),
 			strings.Join(songs, "\n"),
 		),
-		&td.SendTextMessageOpts{ParseMode: "HTML"},
+		&tg.SendOptions{ParseMode: "HTML"},
 	)
-	return td.EndGroups
+	return nil
 }
 
-func myPlaylistsHandler(c *td.Client, ctx *td.Context) error {
-	m := ctx.EffectiveMessage
+func myPlaylistsHandler(m *tg.NewMessage) error {
 	userID := m.SenderID()
 
 	playlists, err := db.Instance.GetUserPlaylists(userID)
 	if err != nil {
-		_, err := m.ReplyText(c, fmt.Sprintf("Error fetching playlists: %s", err.Error()), nil)
+		_, err := m.Reply(fmt.Sprintf("Error fetching playlists: %s", err.Error()))
 		return err
 	}
 
 	if len(playlists) == 0 {
-		_, err := m.ReplyText(c, "You do not have any playlists.", nil)
+		_, err := m.Reply("You do not have any playlists.")
 		return err
 	}
 
@@ -337,10 +297,9 @@ func myPlaylistsHandler(c *td.Client, ctx *td.Context) error {
 		)
 	}
 
-	_, err = m.ReplyText(
-		c,
+	_, err = m.Reply(
 		fmt.Sprintf("<b>My Playlists</b>\n\n%s", strings.Join(playlistInfo, "\n")),
-		&td.SendTextMessageOpts{ParseMode: "HTML"},
+		&tg.SendOptions{ParseMode: "HTML"},
 	)
 
 	return err

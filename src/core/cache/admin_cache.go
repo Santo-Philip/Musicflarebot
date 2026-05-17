@@ -1,44 +1,14 @@
-/*
- * TgMusicBot - Telegram Music Bot
- *  Copyright (c) 2025-2026 Ashok Shau
- *
- *  Licensed under GNU GPL v3
- *  See https://github.com/AshokShau/TgMusicBot
- */
-
 package cache
 
 import (
 	"fmt"
 	"time"
 
-	td "github.com/AshokShau/gotdbot"
+	tg "github.com/amarnathcjd/gogram/telegram"
 )
 
 // AdminCache is the package-level cache for chat administrator lists.
-// It is intentionally never Close()d because it lives for the process lifetime.
-var AdminCache = NewCache[[]*td.ChatMember](time.Hour)
-
-// allCreatorRights is the full permission set implicitly held by a chat creator.
-var allCreatorRights = &td.ChatAdministratorRights{
-	CanChangeInfo:           true,
-	CanDeleteMessages:       true,
-	CanDeleteStories:        true,
-	CanEditMessages:         true,
-	CanEditStories:          true,
-	CanInviteUsers:          true,
-	CanManageChat:           true,
-	CanManageDirectMessages: true,
-	CanManageTags:           true,
-	CanManageTopics:         true,
-	CanManageVideoChats:     true,
-	CanPinMessages:          true,
-	CanPostMessages:         true,
-	CanPostStories:          true,
-	CanPromoteMembers:       true,
-	CanRestrictMembers:      true,
-	IsAnonymous:             false,
-}
+var AdminCache = NewCache[[]*tg.Participant](time.Hour)
 
 // adminCacheKey returns the canonical cache key for a chat's admin list.
 func adminCacheKey(chatID int64) string {
@@ -46,7 +16,6 @@ func adminCacheKey(chatID int64) string {
 }
 
 // GetChatAdminIDs returns the user IDs of all cached admins for chatID.
-// Returns an error if the chat is not in the cache (caller should use GetAdmins).
 func GetChatAdminIDs(chatID int64) ([]int64, error) {
 	admins, ok := AdminCache.Get(adminCacheKey(chatID))
 	if !ok {
@@ -55,17 +24,15 @@ func GetChatAdminIDs(chatID int64) ([]int64, error) {
 
 	ids := make([]int64, 0, len(admins))
 	for _, admin := range admins {
-		if user, ok := admin.MemberId.(*td.MessageSenderUser); ok {
-			ids = append(ids, user.UserId)
+		if admin.User != nil {
+			ids = append(ids, admin.User.ID)
 		}
 	}
 	return ids, nil
 }
 
 // GetAdmins returns the administrator list for chatID.
-// It serves from cache unless forceReload is true, in which case it always
-// fetches from Telegram and refreshes the cache.
-func GetAdmins(client *td.Client, chatID int64, forceReload bool) ([]*td.ChatMember, error) {
+func GetAdmins(client *tg.Client, chatID int64, forceReload bool) ([]*tg.Participant, error) {
 	key := adminCacheKey(chatID)
 
 	if !forceReload {
@@ -74,39 +41,26 @@ func GetAdmins(client *td.Client, chatID int64, forceReload bool) ([]*td.ChatMem
 		}
 	}
 
-	res, err := client.SearchChatMembers(
-		chatID,
-		0,
-		"",
-		&td.SearchChatMembersOpts{
-			Filter: td.ChatMembersFilterAdministrators{},
-		},
-	)
+	admins, _, err := client.GetChatMembers(chatID, &tg.ParticipantOptions{
+		Filter: &tg.ChannelParticipantsAdmins{},
+	})
 	if err != nil {
-		// Do NOT cache the error — a transient failure should not block future
-		// lookups for up to an hour. Let the next call retry.
 		return nil, fmt.Errorf("fetch admins for chat %d: %w", chatID, err)
-	}
-
-	admins := make([]*td.ChatMember, len(res.Members))
-	for i := range res.Members {
-		admins[i] = &res.Members[i]
 	}
 
 	AdminCache.Set(key, admins)
 	return admins, nil
 }
 
-// GetUserAdmin returns the ChatMember record for userID in chatID, or an error
-// if they are not an administrator.
-func GetUserAdmin(client *td.Client, chatID, userID int64, forceReload bool) (*td.ChatMember, error) {
+// GetUserAdmin returns the Participant record for userID in chatID, or an error.
+func GetUserAdmin(client *tg.Client, chatID, userID int64, forceReload bool) (*tg.Participant, error) {
 	admins, err := GetAdmins(client, chatID, forceReload)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, admin := range admins {
-		if user, ok := admin.MemberId.(*td.MessageSenderUser); ok && user.UserId == userID {
+		if admin.User != nil && admin.User.ID == userID {
 			return admin, nil
 		}
 	}
@@ -115,28 +69,38 @@ func GetUserAdmin(client *td.Client, chatID, userID int64, forceReload bool) (*t
 }
 
 // GetRights returns the administrator rights for userID in chatID.
-// Chat creators are granted the full permission set.
-func GetRights(client *td.Client, chatID, userID int64, forceReload bool) (*td.ChatAdministratorRights, error) {
+func GetRights(client *tg.Client, chatID, userID int64, forceReload bool) (*tg.ChatAdminRights, error) {
 	admin, err := GetUserAdmin(client, chatID, userID, forceReload)
 	if err != nil {
 		return nil, err
 	}
 
-	switch status := admin.Status.(type) {
-	case *td.ChatMemberStatusAdministrator:
-		return status.Rights, nil
-	case *td.ChatMemberStatusCreator:
-		return allCreatorRights, nil
-	default:
-		// Unreachable in practice: GetUserAdmin only returns members whose
-		// MemberId matched userID, and Telegram only lists admins/creators in
-		// the administrators filter.
-		return nil, fmt.Errorf("user %d has unexpected member status in chat %d", userID, chatID)
+	if admin.Rights != nil {
+		return admin.Rights, nil
 	}
+	if admin.Status == "creator" {
+		return allCreatorRights, nil
+	}
+
+	return nil, fmt.Errorf("user %d has no admin rights in chat %d", userID, chatID)
+}
+
+// allCreatorRights is the full permission set implicitly held by a chat creator.
+var allCreatorRights = &tg.ChatAdminRights{
+	ChangeInfo:     true,
+	DeleteMessages: true,
+	EditMessages:   true,
+	InviteUsers:    true,
+	Other:          true,
+	PinMessages:    true,
+	PostMessages:   true,
+	AddAdmins:      true,
+	BanUsers:       true,
+	ManageCall:     true,
+	Anonymous:      false,
 }
 
 // ClearAdminCache removes the cached admin list for chatID.
-// Pass chatID 0 to clear all cached admin lists.
 func ClearAdminCache(chatID int64) {
 	if chatID == 0 {
 		AdminCache.Clear()
@@ -146,9 +110,7 @@ func ClearAdminCache(chatID int64) {
 }
 
 // UpdateAdminCache updates the cached administrator list for chatID.
-// If the member's status is an administrator or creator, it is added or updated.
-// Otherwise, the member is removed from the cached list.
-func UpdateAdminCache(chatID int64, member *td.ChatMember) {
+func UpdateAdminCache(chatID int64, member *tg.Participant) {
 	key := adminCacheKey(chatID)
 	admins, ok := AdminCache.Get(key)
 	if !ok {
@@ -156,30 +118,22 @@ func UpdateAdminCache(chatID int64, member *td.ChatMember) {
 	}
 
 	userID := int64(0)
-	if user, ok := member.MemberId.(*td.MessageSenderUser); ok {
-		userID = user.UserId
-	} else if chat, ok := member.MemberId.(*td.MessageSenderChat); ok {
-		userID = chat.ChatId
+	if member.User != nil {
+		userID = member.User.ID
 	}
 
 	if userID == 0 {
 		return
 	}
 
-	isAdmin := false
-	switch member.Status.(type) {
-	case *td.ChatMemberStatusAdministrator, *td.ChatMemberStatusCreator:
-		isAdmin = true
-	}
+	isAdmin := member.Status == "administrator" || member.Status == "creator"
 
 	updated := false
-	newAdmins := make([]*td.ChatMember, 0, len(admins))
+	newAdmins := make([]*tg.Participant, 0, len(admins))
 	for _, admin := range admins {
 		currentID := int64(0)
-		if u, ok := admin.MemberId.(*td.MessageSenderUser); ok {
-			currentID = u.UserId
-		} else if c, ok := admin.MemberId.(*td.MessageSenderChat); ok {
-			currentID = c.ChatId
+		if admin.User != nil {
+			currentID = admin.User.ID
 		}
 
 		if currentID == userID {

@@ -1,11 +1,3 @@
-/*
- * TgMusicBot - Telegram Music Bot
- *  Copyright (c) 2025-2026 Ashok Shau
- *
- *  Licensed under GNU GPL v3
- *  See https://github.com/AshokShau/TgMusicBot
- */
-
 package utils
 
 import (
@@ -20,29 +12,24 @@ import (
 	"strings"
 	"time"
 
-	td "github.com/AshokShau/gotdbot"
+	tg "github.com/amarnathcjd/gogram/telegram"
 )
 
 // GetFileDur extracts the duration of a media file from a Telegram message.
-func GetFileDur(m *td.Message) int {
-	if m.Content == nil {
+func GetFileDur(m *tg.NewMessage) int {
+	doc := m.Document()
+	if doc == nil {
 		return 0
 	}
-
-	switch media := m.Content.(type) {
-	case *td.MessageAudio:
-		return int(media.Audio.Duration)
-	case *td.MessageVoiceNote:
-		return int(media.VoiceNote.Duration)
-	case *td.MessageVideo:
-		return int(media.Video.Duration)
-	case *td.MessageVideoNote:
-		return int(media.VideoNote.Duration)
-	case *td.MessageDocument:
-		return 0
-	default:
-		return 0
+	for _, attr := range doc.Attributes {
+		switch a := attr.(type) {
+		case *tg.DocumentAttributeAudio:
+			return int(a.Duration)
+		case *tg.DocumentAttributeVideo:
+			return int(a.Duration)
+		}
 	}
+	return 0
 }
 
 type ffprobeOutput struct {

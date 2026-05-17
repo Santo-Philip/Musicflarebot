@@ -1,17 +1,10 @@
-/*
- * TgMusicBot - Telegram Music Bot
- *  Copyright (c) 2025-2026 Ashok Shau
- *
- *  Licensed under GNU GPL v3
- *  See https://github.com/AshokShau/TgMusicBot
- */
-
 package main
 
 import (
-	"ashokshau/tgmusic/config"
-	"ashokshau/tgmusic/src"
-	"ashokshau/tgmusic/src/handlers"
+	"musicflarebot/config"
+	"musicflarebot/src"
+	"musicflarebot/src/handlers"
+	"musicflarebot/src/vc"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -19,14 +12,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"ashokshau/tgmusic/src/vc"
-
-	"github.com/AshokShau/gotdbot"
+	tg "github.com/amarnathcjd/gogram/telegram"
 )
 
-//go:generate go run github.com/AshokShau/gotdbot/scripts/tools
-
-// main serves as the entry point for the application.
 func main() {
 	if err := config.LoadConfig(); err != nil {
 		panic(err)
@@ -47,56 +35,50 @@ func main() {
 					t := a.Value.Time()
 					a.Value = slog.StringValue(t.Format("2006-01-02 15:04:05"))
 				}
-
 				if a.Key == slog.SourceKey {
 					source := a.Value.Any().(*slog.Source)
 					a.Value = slog.StringValue(fmt.Sprintf("%s:%d", filepath.Base(source.File), source.Line))
 				}
-
 				return a
 			},
 		}),
 	)
-
 	slog.SetDefault(logger)
-	tdDir := "database"
-	_ = os.Remove(tdDir)
 
-	clientConfig := &gotdbot.ClientOpts{
-		LibraryPath: "./libtdjson.so.1.8.64",
-		Logger:      logger,
-		AutoRetry: &gotdbot.AutoRetry{
-			ChatNotFound: true,
-		},
-		DatabaseDirectory: tdDir,
-	}
-
-	client, err := gotdbot.NewClient(config.Conf.ApiId, config.Conf.ApiHash, config.Conf.Token, clientConfig)
+	client, err := tg.NewClient(tg.ClientConfig{
+		AppID:     config.Conf.ApiId,
+		AppHash:   config.Conf.ApiHash,
+		ParseMode: "HTML",
+	})
 	if err != nil {
-		slog.Error("gotdbot.NewClient error", "error", err)
+		slog.Error("tg.NewClient error", "error", err)
 		os.Exit(1)
 	}
 
-	dispatcher := client.Dispatcher
-	if err = client.Start(); err != nil {
-		slog.Error("gotdbot.Start() error", "error", err)
+	if err = client.Connect(); err != nil {
+		slog.Error("client.Connect() error", "error", err)
 		os.Exit(1)
 	}
 
-	err = src.Init(client)
-	if err != nil {
+	if err = client.LoginBot(config.Conf.Token); err != nil {
+		slog.Error("client.LoginBot() error", "error", err)
+		os.Exit(1)
+	}
+
+	if err = src.Init(client); err != nil {
 		panic(err)
 	}
 
-	handlers.LoadModules(dispatcher)
-	me := client.Me
+	handlers.LoadModules(client)
+
+	me := client.Me()
 	username := ""
-	if me.Usernames != nil && len(me.Usernames.ActiveUsernames) > 0 {
-		username = me.Usernames.ActiveUsernames[0]
+	if me != nil {
+		username = me.Username
 	}
 
-	slog.Info("Bot started as @ (ID: )", "arg1", username, "id", me.Id)
-	_, _ = client.SendTextMessage(config.Conf.LoggerId, "The bot has started!", nil)
+	slog.Info("Bot started", "username", username, "id", me.ID)
+	_, _ = client.SendMessage(config.Conf.LoggerId, "The bot has started!", nil)
 	client.Idle()
 	slog.Info("The bot is shutting down...")
 	vc.Calls.StopAllClients()

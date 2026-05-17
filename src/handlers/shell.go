@@ -1,19 +1,11 @@
-/*
- * TgMusicBot - Telegram Music Bot
- *  Copyright (c) 2025-2026 Ashok Shau
- *
- *  Licensed under GNU GPL v3
- *  See https://github.com/AshokShau/TgMusicBot
- */
-
 package handlers
 
 import (
-	"ashokshau/tgmusic/config"
 	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"musicflarebot/config"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -21,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	td "github.com/AshokShau/gotdbot"
+	tg "github.com/amarnathcjd/gogram/telegram"
 )
 
 func runShellCommand(cmd string, timeout time.Duration) (string, string, int) {
@@ -53,7 +45,8 @@ func runShellCommand(cmd string, timeout time.Duration) (string, string, int) {
 
 	exitCode := 0
 	if err != nil {
-		if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
 			exitCode = exitErr.ExitCode()
 		}
 	}
@@ -61,18 +54,16 @@ func runShellCommand(cmd string, timeout time.Duration) (string, string, int) {
 	return strings.TrimSpace(stdout.String()), strings.TrimSpace(stderr.String()), exitCode
 }
 
-func shellRunner(c *td.Client, ctx *td.Context) error {
-	m := ctx.EffectiveMessage
-
+func shellRunner(m *tg.NewMessage) error {
 	args := strings.TrimSpace(Args(m))
 	if args == "" {
-		_, _ = m.ReplyText(c, "Usage: /sh cmd", nil)
-		return td.EndGroups
+		_, _ = m.Reply("Usage: /sh cmd")
+		return nil
 	}
 
-	msg, err := m.ReplyText(c, "Running...", nil)
+	msg, err := m.Reply("Running...")
 	if err != nil {
-		return td.EndGroups
+		return nil
 	}
 
 	commands := strings.Split(args, "\n")
@@ -103,34 +94,33 @@ func shellRunner(c *td.Client, ctx *td.Context) error {
 	}
 
 	if len(finalOutput) <= 3500 {
-		_, _ = msg.EditText(c, finalOutput, &td.EditTextMessageOpts{ParseMode: "HTML"})
-		return td.EndGroups
+		_, _ = msg.Edit(finalOutput, &tg.SendOptions{ParseMode: "HTML"})
+		return nil
 	}
 
 	file := filepath.Join(config.Conf.DownloadsDir, fmt.Sprintf("%d.txt", time.Now().UnixNano()))
 	if err := os.WriteFile(file, []byte(finalOutput), 0644); err != nil {
-		_, _ = msg.EditText(c, fmt.Sprintf("Failed to write output: %v", err), nil)
-		return td.EndGroups
+		_, _ = msg.Edit(fmt.Sprintf("Failed to write output: %v", err))
+		return nil
 	}
 	defer os.Remove(file)
 
-	_, err = msg.EditMedia(c, td.InputMessageDocument{
-		Document: td.InputFileLocal{Path: file},
-	}, nil)
+	_, err = msg.ReplyMedia(file, &tg.MediaOptions{
+		ForceDocument: true,
+	})
 
 	if err != nil {
-		_, _ = msg.EditText(c, "Error: "+err.Error(), nil)
-		return td.EndGroups
+		_, _ = msg.Edit("Error: " + err.Error())
+		return nil
 	}
 
-	return td.EndGroups
+	return nil
 }
 
-// shellCommand handles /sh commands
-func shellCommand(c *td.Client, ctx *td.Context) error {
-	if !isDev(ctx) {
-		return td.EndGroups
+func shellCommand(m *tg.NewMessage) error {
+	if !isDev(m) {
+		return nil
 	}
 
-	return shellRunner(c, ctx)
+	return shellRunner(m)
 }

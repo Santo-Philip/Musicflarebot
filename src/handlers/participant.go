@@ -1,119 +1,109 @@
-/*
- * TgMusicBot - Telegram Music Bot
- *  Copyright (c) 2025-2026 Ashok Shau
- *
- *  Licensed under GNU GPL v3
- */
-
 package handlers
 
 import (
-	"ashokshau/tgmusic/config"
-	"ashokshau/tgmusic/src/core/cache"
-	"ashokshau/tgmusic/src/core/db"
-	"ashokshau/tgmusic/src/vc"
 	"fmt"
 	"log/slog"
+	"musicflarebot/config"
+	"musicflarebot/src/core/cache"
+	"musicflarebot/src/core/db"
+	"musicflarebot/src/vc"
 	"strconv"
 	"strings"
 
-	"github.com/AshokShau/gotdbot"
+	tg "github.com/amarnathcjd/gogram/telegram"
 )
 
-func handleParticipant(client *gotdbot.Client, ctx *gotdbot.Context) error {
-	update := ctx.Update.UpdateChatMember
-	if update == nil {
-		return gotdbot.EndGroups
-	}
+func handleParticipant(pu *tg.ParticipantUpdate) error {
+	chatID := pu.ChatID()
+	userID := pu.UserID()
+	me := client.Me()
 
-	chatID := ctx.EffectiveChatId
-	me := client.Me
-
-	getMemberInfo := func(memberId gotdbot.MessageSender) (int64, string) {
-		switch sender := memberId.(type) {
-
-		case *gotdbot.MessageSenderUser:
-			return sender.UserId,
-				fmt.Sprintf(
-					"User <a href=\"tg://user?id=%d\">%d</a>",
-					sender.UserId,
-					sender.UserId,
-				)
-
-		case *gotdbot.MessageSenderChat:
-			return sender.ChatId,
-				fmt.Sprintf("Chat %d", sender.ChatId)
-
-		default:
-			return 0, "Unknown"
-		}
-	}
-
-	userID, _ := getMemberInfo(update.NewChatMember.MemberId)
 	call, _, err := vc.Calls.GetGroupAssistant(chatID)
 	if err != nil {
-		client.Logger.Error("Failed to get assistant for chat", "chat_id", chatID, "error", err)
-		return gotdbot.EndGroups
+		return nil
 	}
 
 	ubID := call.App.Me().ID
 
-	if !isRelevantUser(userID, me.Id, ubID) {
-		return gotdbot.EndGroups
+	if !isRelevantUser(userID, me.ID, ubID) {
+		return nil
 	}
 
 	s := strings.TrimPrefix(strconv.FormatInt(chatID, 10), "-100")
-	rawChatId, _ := strconv.ParseInt(s, 10, 64)
+	rawChatID, _ := strconv.ParseInt(s, 10, 64)
 
-	chat, err := client.GetSupergroup(rawChatId)
+	gChat, err := client.GetChannel(rawChatID)
 	if err != nil {
-		if strings.Contains(err.Error(), "Invalid supergroup identifier") {
-			_ = client.LeaveChat(chatID)
-			return gotdbot.EndGroups
+		if strings.Contains(err.Error(), "CHANNEL_INVALID") || strings.Contains(err.Error(), "Invalid supergroup identifier") {
+			_ = client.LeaveChannel(chatID)
+			return nil
 		}
-
-		client.Logger.Error("Failed to get chat", "chat_id", chatID, "error", err)
-		return gotdbot.EndGroups
+		slog.Error("Failed to get channel", "chat_id", chatID, "error", err)
+		return nil
 	}
 
-	if chat.IsDirectMessagesGroup {
-		_ = client.LeaveChat(chatID)
-		return gotdbot.EndGroups
-	}
-
-	if chat.Usernames != nil && chat.Usernames.EditableUsername != "" {
-		inviteLink := fmt.Sprintf("https://t.me/%s", chat.Usernames.EditableUsername)
+	if gChat.Username != "" {
+		inviteLink := fmt.Sprintf("https://t.me/%s", gChat.Username)
 		vc.Calls.UpdateInviteLink(chatID, inviteLink)
 	}
 
 	go storeChatReference(chatID)
 
-	oldStatus := update.OldChatMember.Status
-	newStatus := update.NewChatMember.Status
+	oldStatus := participantStatusToString(pu.Old)
+	newStatus := participantStatusToString(pu.New)
 
-	if isAdmin(oldStatus) || isAdmin(newStatus) {
-		cache.UpdateAdminCache(chatID, update.NewChatMember)
+	if isAdminStatus(oldStatus) || isAdminStatus(newStatus) {
+		newParticipant := &tg.Participant{
+			User: &tg.UserObj{ID: userID},
+		}
+		if pu.New != nil {
+			newParticipant.Status = newStatus
+			newParticipant.Rights = participantRights(pu.New)
+		}
+		cache.UpdateAdminCache(chatID, newParticipant)
 	}
 
-	client.Logger.Debug("Status change: UserID= Old= New= ChatID=", "user_id", userID, "arg2", oldStatus, "arg3", newStatus, "chat_id", chatID)
+	slog.Debug("Status change", "user_id", userID, "old", oldStatus, "new", newStatus, "chat_id", chatID)
 
-	return handleParticipantStatusChange(
-		client,
-		chatID,
-		userID,
-		ubID,
-		oldStatus,
-		newStatus,
-		chat,
-	)
+	return handleParticipantStatusChange(chatID, userID, ubID, oldStatus, newStatus)
+}
+
+func participantStatusToString(p *tg.ChannelParticipant) string {
+	if p == nil {
+		return "left"
+	}
+	switch p.ClassName {
+	case "ChannelParticipantCreator":
+		return "creator"
+	case "ChannelParticipantAdmin":
+		return "administrator"
+	case "ChannelParticipantBanned":
+		return "kicked"
+	case "ChannelParticipantLeft":
+		return "left"
+	default:
+		return "member"
+	}
+}
+
+func participantRights(p *tg.ChannelParticipant) *tg.ChatAdminRights {
+	switch pt := p.(type) {
+	case *tg.ChannelParticipantAdmin:
+		return pt.AdminRights
+	default:
+		return nil
+	}
+}
+
+func isAdminStatus(status string) bool {
+	return status == "administrator" || status == "creator"
 }
 
 func storeChatReference(chatID int64) {
-
 	slog.Debug("Storing chat reference for chat", "chat_id", chatID)
 
 	if err := db.Instance.AddChat(chatID); err != nil {
-		slog.Error("Failed to add chat  to database", "chat_id", chatID, "error", err)
+		slog.Error("Failed to add chat to database", "chat_id", chatID, "error", err)
 	}
 }
 
@@ -121,127 +111,76 @@ func isRelevantUser(userID, botID, assistantID int64) bool {
 	return userID == botID || userID == assistantID
 }
 
-func isAdmin(status gotdbot.ChatMemberStatus) bool {
-	switch status.(type) {
-	case *gotdbot.ChatMemberStatusAdministrator, *gotdbot.ChatMemberStatusCreator:
-		return true
-	default:
-		return false
-	}
-}
-
-func handleParticipantStatusChange(
-	client *gotdbot.Client,
-	chatID int64,
-	userID int64,
-	ubID int64,
-	oldStatus gotdbot.ChatMemberStatus,
-	newStatus gotdbot.ChatMemberStatus,
-	chat *gotdbot.Supergroup,
-) error {
-
-	_, oldLeft := oldStatus.(*gotdbot.ChatMemberStatusLeft)
-	_, newLeft := newStatus.(*gotdbot.ChatMemberStatusLeft)
-
-	_, oldMember := oldStatus.(*gotdbot.ChatMemberStatusMember)
-	_, newMember := newStatus.(*gotdbot.ChatMemberStatusMember)
-
-	_, oldAdmin := oldStatus.(*gotdbot.ChatMemberStatusAdministrator)
-	_, newAdmin := newStatus.(*gotdbot.ChatMemberStatusAdministrator)
-
-	_, newBanned := newStatus.(*gotdbot.ChatMemberStatusBanned)
-	_, oldBanned := oldStatus.(*gotdbot.ChatMemberStatusBanned)
-
+func handleParticipantStatusChange(chatID int64, userID int64, ubID int64, oldStatus string, newStatus string) error {
 	switch {
+	case oldStatus == "left" && (newStatus == "member" || newStatus == "administrator" || newStatus == "creator"):
+		return handleJoinG(chatID, userID, ubID)
 
-	case oldLeft && (newMember || newAdmin):
-		return handleJoin(client, chatID, userID, ubID, chat)
+	case (oldStatus == "member" || oldStatus == "administrator") && newStatus == "left":
+		return handleLeaveG(chatID, userID, ubID)
 
-	case (oldMember || oldAdmin) && newLeft:
-		return handleLeave(client, chatID, userID, ubID)
+	case newStatus == "kicked":
+		return handleBanG(chatID, userID, ubID)
 
-	case newBanned:
-		return handleBan(client, chatID, userID, ubID)
-
-	case oldBanned && newLeft:
-		return handleUnban(chatID, userID)
+	case oldStatus == "kicked" && newStatus == "left":
+		return handleUnbanG(chatID, userID)
 
 	default:
-		return handlePromotionDemotion(
-			client,
-			chatID,
-			userID,
-			oldAdmin,
-			newAdmin,
-			chat,
-		)
+		return handlePromotionDemotionG(chatID, userID, oldStatus, newStatus)
 	}
 }
 
-func handleJoin(
-	client *gotdbot.Client,
-	chatID int64,
-	userID int64,
-	ubID int64,
-	chat *gotdbot.Supergroup,
-) error {
+func handleJoinG(chatID int64, userID int64, ubID int64) error {
+	slog.Info("User joined chat", "user_id", userID, "chat_id", chatID)
 
-	client.Logger.Info("User  joined chat", "user_id", userID, "chat_id", chatID)
-
-	if userID == client.Me.Id {
-		client.Logger.Info("Bot joined chat", "chat_id", chatID)
-		sendJoinLog(client, chatID, chat)
+	if userID == client.Me().ID {
+		slog.Info("Bot joined chat", "chat_id", chatID)
+		sendJoinLogG(chatID)
 	}
 
-	updateStatusCache(chatID, userID, &gotdbot.ChatMemberStatusMember{})
-
+	vc.Calls.UpdateMembership(chatID, userID, "member")
 	return nil
 }
 
-func sendJoinLog(client *gotdbot.Client, chatID int64, chat *gotdbot.Supergroup) {
-
+func sendJoinLogG(chatID int64) {
 	text := fmt.Sprintf(
 		"<b>🤖 Bot Joined a New Chat</b>\n"+
 			"📌 <b>Chat ID:</b> <code>%d</code>\n",
 		chatID,
 	)
 
-	_, err := client.SendTextMessage(
+	_, err := client.SendMessage(
 		config.Conf.LoggerId,
 		text,
-		&gotdbot.SendTextMessageOpts{
-			ParseMode: "HTML",
-		},
+		&tg.SendOptions{ParseMode: "HTML"},
 	)
 
 	if err != nil {
-		client.Logger.Warn("Failed to send join log", "error", err)
+		slog.Warn("Failed to send join log", "error", err)
 	}
 }
 
-func handleLeave(client *gotdbot.Client, chatID, userID, ubID int64) error {
-	client.Logger.Info("User  left chat", "user_id", userID, "chat_id", chatID)
+func handleLeaveG(chatID int64, userID int64, ubID int64) error {
+	slog.Info("User left chat", "user_id", userID, "chat_id", chatID)
 
 	if userID == ubID {
 		cache.ChatCache.ClearChat(chatID)
 	}
 
-	if userID == client.Me.Id {
+	if userID == client.Me().ID {
 		if err := vc.Calls.Stop(chatID); err != nil {
-			client.Logger.Error("Failed to stop VC", "error", err)
+			slog.Error("Failed to stop VC", "error", err)
 		}
 	}
 
-	updateStatusCache(chatID, userID, &gotdbot.ChatMemberStatusLeft{})
-
+	vc.Calls.UpdateMembership(chatID, userID, "left")
 	return nil
 }
 
-func handleBan(client *gotdbot.Client, chatID, userID, ubID int64) error {
-	client.Logger.Debug("User  banned from chat", "user_id", userID, "chat_id", chatID)
+func handleBanG(chatID int64, userID int64, ubID int64) error {
+	slog.Debug("User banned from chat", "user_id", userID, "chat_id", chatID)
 
 	if userID == ubID {
-
 		cache.ChatCache.ClearChat(chatID)
 
 		message := fmt.Sprintf(
@@ -250,12 +189,10 @@ func handleBan(client *gotdbot.Client, chatID, userID, ubID int64) error {
 			ubID,
 		)
 
-		_, err := client.SendTextMessage(
+		_, err := client.SendMessage(
 			chatID,
 			message,
-			&gotdbot.SendTextMessageOpts{
-				ParseMode: "HTML",
-			},
+			&tg.SendOptions{ParseMode: "HTML"},
 		)
 
 		if err != nil {
@@ -263,32 +200,25 @@ func handleBan(client *gotdbot.Client, chatID, userID, ubID int64) error {
 		}
 	}
 
-	if userID == client.Me.Id {
+	if userID == client.Me().ID {
 		if err := vc.Calls.Stop(chatID); err != nil {
-			client.Logger.Error("Failed stopping VC after ban", "error", err)
+			slog.Error("Failed stopping VC after ban", "error", err)
 		}
 	}
 
-	updateStatusCache(chatID, userID, &gotdbot.ChatMemberStatusBanned{})
-
+	vc.Calls.UpdateMembership(chatID, userID, "kicked")
 	return nil
 }
 
-func handleUnban(chatID, userID int64) error {
-	slog.Info("User  unbanned from chat", "user_id", userID, "chat_id", chatID)
-	updateStatusCache(chatID, userID, &gotdbot.ChatMemberStatusLeft{})
-
+func handleUnbanG(chatID int64, userID int64) error {
+	slog.Info("User unbanned from chat", "user_id", userID, "chat_id", chatID)
+	vc.Calls.UpdateMembership(chatID, userID, "left")
 	return nil
 }
 
-func handlePromotionDemotion(
-	client *gotdbot.Client,
-	chatID int64,
-	userID int64,
-	oldAdmin bool,
-	newAdmin bool,
-	chat *gotdbot.Supergroup,
-) error {
+func handlePromotionDemotionG(chatID int64, userID int64, oldStatus string, newStatus string) error {
+	oldAdmin := isAdminStatus(oldStatus)
+	newAdmin := isAdminStatus(newStatus)
 
 	isPromoted := !oldAdmin && newAdmin
 	isDemoted := oldAdmin && !newAdmin
@@ -298,26 +228,12 @@ func handlePromotionDemotion(
 	}
 
 	if isPromoted {
-		client.Logger.Info("User  promoted in chat", "user_id", userID, "chat_id", chatID)
-		updateStatusCache(chatID, userID, &gotdbot.ChatMemberStatusAdministrator{})
+		slog.Info("User promoted in chat", "user_id", userID, "chat_id", chatID)
+		vc.Calls.UpdateMembership(chatID, userID, "administrator")
 		return nil
 	}
 
-	client.Logger.Info("User  demoted in chat", "user_id", userID, "chat_id", chatID)
-	updateStatusCache(chatID, userID, &gotdbot.ChatMemberStatusMember{})
-
+	slog.Info("User demoted in chat", "user_id", userID, "chat_id", chatID)
+	vc.Calls.UpdateMembership(chatID, userID, "member")
 	return nil
-}
-
-func updateStatusCache(chatID, userID int64, status gotdbot.ChatMemberStatus) {
-	call, _, err := vc.Calls.GetGroupAssistant(chatID)
-	if err != nil {
-		return
-	}
-
-	ubID := call.App.Me().ID
-
-	if userID == ubID {
-		vc.Calls.UpdateMembership(chatID, userID, status)
-	}
 }

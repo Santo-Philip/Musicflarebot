@@ -1,21 +1,17 @@
-/*
- * TgMusicBot - Telegram Music Bot
- *  Copyright (c) 2025-2026 Ashok Shau
- *
- *  Licensed under GNU GPL v3
- *  See https://github.com/AshokShau/TgMusicBot
- */
-
 package dl
 
 import (
-	"ashokshau/tgmusic/src/utils"
+	"musicflarebot/config"
+	"musicflarebot/src/core/db"
+	"musicflarebot/src/utils"
 	"fmt"
+	"strconv"
+	"strings"
 
-	td "github.com/AshokShau/gotdbot"
+	tg "github.com/amarnathcjd/gogram/telegram"
 )
 
-func DownloadCachedTrack(cached *utils.CachedTrack, bot *td.Client) (string, error) {
+func DownloadCachedTrack(cached *utils.CachedTrack, bot *tg.Client) (string, error) {
 	if cached.Platform == utils.DirectLink {
 		return cached.URL, nil
 	}
@@ -24,10 +20,26 @@ func DownloadCachedTrack(cached *utils.CachedTrack, bot *td.Client) (string, err
 		return downloadTelegramFile(cached, bot)
 	}
 
-	return downloadViaWrapper(cached, bot)
+	if cached.Platform == utils.YouTube && cached.TrackID != "" {
+		path, err := checkSongCache(cached.TrackID, bot)
+		if err == nil && path != "" {
+			return path, nil
+		}
+	}
+
+	path, err := downloadViaWrapper(cached, bot)
+	if err != nil {
+		return "", err
+	}
+
+	if !cached.IsVideo && cached.Platform == utils.YouTube && cached.TrackID != "" {
+		_ = cacheSongFile(bot, cached.TrackID, path)
+	}
+
+	return path, nil
 }
 
-func downloadViaWrapper(cached *utils.CachedTrack, bot *td.Client) (string, error) {
+func downloadViaWrapper(cached *utils.CachedTrack, bot *tg.Client) (string, error) {
 	wrapper := NewDownloaderWrapper(cached.URL)
 	if !wrapper.IsValid() {
 		return "", fmt.Errorf("invalid cached URL: %s", cached.URL)
@@ -50,34 +62,79 @@ func downloadViaWrapper(cached *utils.CachedTrack, bot *td.Client) (string, erro
 	return path, nil
 }
 
-func downloadTelegramFile(cached *utils.CachedTrack, bot *td.Client) (string, error) {
-	file, err := bot.GetRemoteFile(cached.TrackID, nil)
-	if err != nil {
-		return "", err
+func downloadTelegramFile(cached *utils.CachedTrack, bot *tg.Client) (string, error) {
+	// For Telegram platform, TrackID is a file ID. Use gogram's DownloadMedia.
+	// Since we don't have a message object, we create one by sending a dummy request
+	// or using raw API. For now, use GetMessageByID approach.
+	// If TrackID looks like a t.me URL, resolve it.
+	if utils.TelegramMessageRegex.MatchString(cached.TrackID) {
+		return downloadFromTelegramMessage(bot, cached.TrackID)
 	}
-
-	download, err := file.Download(bot, 0, 0, 1, &td.DownloadFileOpts{Synchronous: true})
-	if err != nil {
-		return "", err
-	}
-
-	return download.Local.Path, nil
+	return "", fmt.Errorf("cannot download telegram file with id: %s", cached.TrackID)
 }
 
-func downloadFromTelegramMessage(bot *td.Client, msgURL string) (string, error) {
+func downloadFromTelegramMessage(bot *tg.Client, msgURL string) (string, error) {
 	msg, err := utils.GetMessage(bot, msgURL)
 	if err != nil {
 		return "", fmt.Errorf("get telegram message: %w", err)
 	}
 
-	download, err := msg.Download(bot, 1, 0, 0, true)
+	path, err := msg.Download()
 	if err != nil {
 		return "", err
 	}
 
-	if download == nil || download.Local == nil {
+	if path == "" {
 		return "", fmt.Errorf("failed to download file from Telegram message")
 	}
 
-	return download.Local.Path, nil
+	return path, nil
+}
+
+func checkSongCache(trackID string, bot *tg.Client) (string, error) {
+	loggerID := config.Conf.LoggerId
+	if loggerID == 0 || trackID == "" {
+		return "", nil
+	}
+
+	val, err := db.Instance.GetSetting("song_cache_" + trackID)
+	if err != nil || val == "" {
+		return "", nil
+	}
+
+	parts := strings.SplitN(val, ":", 2)
+	if len(parts) != 2 {
+		return "", nil
+	}
+
+	msgID, err := strconv.Atoi(parts[1])
+	if err != nil || msgID == 0 {
+		return "", nil
+	}
+
+	url := fmt.Sprintf("https://t.me/c/%s/%d", parts[0], msgID)
+	return downloadFromTelegramMessage(bot, url)
+}
+
+func cacheSongFile(bot *tg.Client, trackID, filePath string) error {
+	loggerID := config.Conf.LoggerId
+	if loggerID == 0 || trackID == "" || filePath == "" {
+		return nil
+	}
+
+	msg, err := bot.SendMedia(loggerID, filePath, &tg.MediaOptions{
+		ForceDocument: false,
+	})
+	if err != nil {
+		return err
+	}
+
+	chatID := loggerID
+	if chatID < 0 {
+		s := strconv.FormatInt(-chatID, 10)
+		chatStr := strings.TrimPrefix(s, "100")
+		return db.Instance.SetSetting("song_cache_"+trackID, chatStr+":"+strconv.Itoa(int(msg.ID)))
+	}
+
+	return db.Instance.SetSetting("song_cache_"+trackID, strconv.FormatInt(chatID, 10)+":"+strconv.Itoa(int(msg.ID)))
 }

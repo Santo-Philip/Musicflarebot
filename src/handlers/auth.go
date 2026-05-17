@@ -1,36 +1,28 @@
-/*
- * TgMusicBot - Telegram Music Bot
- *  Copyright (c) 2025-2026 Ashok Shau
- *
- *  Licensed under GNU GPL v3
- *  See https://github.com/AshokShau/TgMusicBot
- */
-
 package handlers
 
 import (
-	"ashokshau/tgmusic/src/core/cache"
-	"ashokshau/tgmusic/src/core/db"
 	"fmt"
+	"log/slog"
+	"musicflarebot/src/core/cache"
+	"musicflarebot/src/core/db"
 
-	td "github.com/AshokShau/gotdbot"
+	tg "github.com/amarnathcjd/gogram/telegram"
 )
 
-func authListHandler(c *td.Client, ctx *td.Context) error {
-	if !adminMode(c, ctx) {
-		return td.EndGroups
-	}
-
-	m := ctx.EffectiveMessage
-	if m.IsPrivate() {
+func authListHandler(m *tg.NewMessage) error {
+	if !adminMode(m) {
 		return nil
 	}
 
-	chatID := m.ChatId
+	if IsPrivate(m) {
+		return nil
+	}
+
+	chatID := m.ChatID()
 
 	authUser := db.Instance.GetAuthUsers(chatID)
 	if authUser == nil || len(authUser) == 0 {
-		_, _ = m.ReplyText(c, "No authorized users found.", nil)
+		_, _ = m.Reply("No authorized users found.")
 		return nil
 	}
 
@@ -39,100 +31,98 @@ func authListHandler(c *td.Client, ctx *td.Context) error {
 		text += fmt.Sprintf("• <a href=\"tg://user?id=%d\">%d</a>\n", uid, uid)
 	}
 
-	_, _ = m.ReplyText(c, text, replyOpts)
-	return td.EndGroups
+	_, _ = m.Reply(text, replyOpts)
+	return nil
 }
 
-func addAuthHandler(c *td.Client, ctx *td.Context) error {
-	if !adminMode(c, ctx) {
-		return td.EndGroups
+func addAuthHandler(m *tg.NewMessage) error {
+	if !adminMode(m) {
+		return nil
 	}
 
-	m := ctx.EffectiveMessage
-	if m.IsPrivate() {
-		return td.EndGroups
+	if IsPrivate(m) {
+		return nil
 	}
 
-	chatID := m.ChatId
+	chatID := m.ChatID()
 
-	UserStatus, err := cache.GetUserAdmin(c, chatID, m.SenderID(), false)
+	botStatus, err := cache.GetUserAdmin(client, chatID, m.SenderID(), false)
 	if err != nil {
-		c.Logger.Warn("GetUserAdmin error", "error", err)
-		_, _ = m.ReplyText(c, "Unable to verify administrator status.", nil)
-		return td.EndGroups
+		slog.Warn("GetUserAdmin error", "error", err)
+		_, _ = m.Reply("Unable to verify administrator status.")
+		return nil
 	}
 
-	switch UserStatus.Status.(type) {
-	case *td.ChatMemberStatusCreator, *td.ChatMemberStatusAdministrator:
+	switch botStatus.Status {
+	case "creator", "administrator":
 	default:
-		_, _ = m.ReplyText(c, "You must be an administrator to use this command.", nil)
-		return td.EndGroups
+		_, _ = m.Reply("You must be an administrator to use this command.")
+		return nil
 	}
 
-	userID, err := getTargetUserID(c, m)
+	userID, err := getTargetUserID(m)
 	if err != nil {
-		_, _ = m.ReplyText(c, err.Error(), nil)
+		_, _ = m.Reply(err.Error())
 		return nil
 	}
 
 	if db.Instance.IsAuthUser(chatID, userID) {
-		_, _ = m.ReplyText(c, "This user is already authorized.", nil)
+		_, _ = m.Reply("This user is already authorized.")
 		return nil
 	}
 
 	if err = db.Instance.AddAuthUser(chatID, userID); err != nil {
-		c.Logger.Error("Failed to add authorized user", "error", err)
-		_, _ = m.ReplyText(c, "Failed to authorize the user.", nil)
+		slog.Error("Failed to add authorized user", "error", err)
+		_, _ = m.Reply("Failed to authorize the user.")
 		return nil
 	}
 
-	_, err = m.ReplyText(c, fmt.Sprintf("User %d has been authorized.", userID), nil)
+	_, err = m.Reply(fmt.Sprintf("User %d has been authorized.", userID))
 	return err
 }
 
-func removeAuthHandler(c *td.Client, ctx *td.Context) error {
-	if !adminMode(c, ctx) {
-		return td.EndGroups
+func removeAuthHandler(m *tg.NewMessage) error {
+	if !adminMode(m) {
+		return nil
 	}
 
-	m := ctx.EffectiveMessage
-	if m.IsPrivate() {
-		return td.EndGroups
+	if IsPrivate(m) {
+		return nil
 	}
 
-	chatID := m.ChatId
+	chatID := m.ChatID()
 
-	UserStatus, err := cache.GetUserAdmin(c, chatID, m.SenderID(), false)
+	botStatus, err := cache.GetUserAdmin(client, chatID, m.SenderID(), false)
 	if err != nil {
-		c.Logger.Warn("GetUserAdmin error", "error", err)
-		_, _ = m.ReplyText(c, "Unable to verify administrator status.", nil)
-		return td.EndGroups
+		slog.Warn("GetUserAdmin error", "error", err)
+		_, _ = m.Reply("Unable to verify administrator status.")
+		return nil
 	}
 
-	switch UserStatus.Status.(type) {
-	case *td.ChatMemberStatusCreator, *td.ChatMemberStatusAdministrator:
+	switch botStatus.Status {
+	case "creator", "administrator":
 	default:
-		_, _ = m.ReplyText(c, "You must be an administrator to use this command.", nil)
-		return td.EndGroups
+		_, _ = m.Reply("You must be an administrator to use this command.")
+		return nil
 	}
 
-	userID, err := getTargetUserID(c, m)
+	userID, err := getTargetUserID(m)
 	if err != nil {
-		_, _ = m.ReplyText(c, err.Error(), nil)
+		_, _ = m.Reply(err.Error())
 		return nil
 	}
 
 	if !db.Instance.IsAuthUser(chatID, userID) {
-		_, _ = m.ReplyText(c, "This user is not authorized.", nil)
+		_, _ = m.Reply("This user is not authorized.")
 		return nil
 	}
 
 	if err := db.Instance.RemoveAuthUser(chatID, userID); err != nil {
-		c.Logger.Error("Failed to remove authorized user", "error", err)
-		_, _ = m.ReplyText(c, "Failed to remove authorized user.", nil)
+		slog.Error("Failed to remove authorized user", "error", err)
+		_, _ = m.Reply("Failed to remove authorized user.")
 		return nil
 	}
 
-	_, err = m.ReplyText(c, fmt.Sprintf("User %d has been removed from the authorized list.", userID), nil)
+	_, err = m.Reply(fmt.Sprintf("User %d has been removed from the authorized list.", userID))
 	return err
 }

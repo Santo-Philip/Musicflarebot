@@ -1,31 +1,21 @@
-/*
- * TgMusicBot - Telegram Music Bot
- *  Copyright (c) 2025-2026 Ashok Shau
- *
- *  Licensed under GNU GPL v3
- *  See https://github.com/AshokShau/TgMusicBot
- */
-
 package handlers
 
 import (
-	"ashokshau/tgmusic/src/core/cache"
-	"ashokshau/tgmusic/src/vc"
+	"musicflarebot/src/core/cache"
+	"musicflarebot/src/vc"
 
-	td "github.com/AshokShau/gotdbot"
+	tg "github.com/amarnathcjd/gogram/telegram"
 )
 
-// skipHandler handles the /skip command.
-func skipHandler(c *td.Client, ctx *td.Context) error {
-	if !adminMode(c, ctx) {
-		return td.EndGroups
+func skipHandler(m *tg.NewMessage) error {
+	if !adminMode(m) {
+		return nil
 	}
 
-	m := ctx.EffectiveMessage
-	chatID := ctx.EffectiveChatId
+	chatID := m.ChatID()
 
 	if !cache.ChatCache.IsActive(chatID) {
-		_, _ = m.ReplyText(c, "The bot is not streaming in the video chat.", nil)
+		_, _ = m.Reply("The bot is not streaming in the video chat.")
 		return nil
 	}
 

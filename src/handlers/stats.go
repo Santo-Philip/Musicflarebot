@@ -1,16 +1,8 @@
-/*
- * TgMusicBot - Telegram Music Bot
- *  Copyright (c) 2025-2026 Ashok Shau
- *
- *  Licensed under GNU GPL v3
- *  See https://github.com/AshokShau/TgMusicBot
- */
-
 package handlers
 
 import (
-	"ashokshau/tgmusic/src/vc"
 	"fmt"
+	"musicflarebot/src/vc"
 	"os"
 	"runtime"
 	"strconv"
@@ -18,9 +10,9 @@ import (
 	"syscall"
 	"time"
 
-	"ashokshau/tgmusic/src/core/db"
+	"musicflarebot/src/core/db"
 
-	td "github.com/AshokShau/gotdbot"
+	tg "github.com/amarnathcjd/gogram/telegram"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/mem"
 	"github.com/shirou/gopsutil/v3/process"
@@ -169,18 +161,18 @@ func gatherAppStats() *AppStats {
 
 	return stats
 }
-func statsHandler(c *td.Client, ctx *td.Context) error {
-	if !isDev(ctx) {
-		return td.EndGroups
+
+func statsHandler(m *tg.NewMessage) error {
+	if !isDev(m) {
+		return nil
 	}
 
-	msg := ctx.EffectiveMessage
-	chatID := msg.ChatId
-	if msg.IsPrivate() {
+	chatID := m.ChatID()
+	if IsPrivate(m) {
 		chatID = 0
 	}
 
-	sysMsg, err := msg.ReplyText(c, "Collecting system statistics...", nil)
+	sysMsg, err := m.Reply("Collecting system statistics...")
 	if err != nil {
 		return err
 	}
@@ -217,7 +209,7 @@ func statsHandler(c *td.Client, ctx *td.Context) error {
 			"• Users: %d\n\n"+
 			"────────────────────────────────────",
 
-		c.Me.FirstName,
+		client.Me().FirstName,
 
 		stats.SystemCPU,
 		stats.CPUCores,
@@ -242,6 +234,6 @@ func statsHandler(c *td.Client, ctx *td.Context) error {
 		len(users),
 	)
 
-	_, _ = sysMsg.EditText(c, text, &td.EditTextMessageOpts{ParseMode: "HTML"})
+	_, _ = sysMsg.Edit(text, &tg.SendOptions{ParseMode: "HTML"})
 	return nil
 }

@@ -1,92 +1,145 @@
-/*
- * TgMusicBot - Telegram Music Bot
- *  Copyright (c) 2025-2026 Ashok Shau
- *
- *  Licensed under GNU GPL v3
- *  See https://github.com/AshokShau/TgMusicBot
- */
-
 package handlers
 
 import (
 	"fmt"
+	"musicflarebot/src/core"
 	"strings"
 
-	"ashokshau/tgmusic/src/core"
-
-	td "github.com/AshokShau/gotdbot"
+	tg "github.com/amarnathcjd/gogram/telegram"
 )
 
-func getHelpCategories() map[string]struct {
-	Title   string
-	Content string
-	Markup  *td.ReplyMarkupInlineKeyboard
-} {
-	return map[string]struct {
-		Title   string
-		Content string
-		Markup  *td.ReplyMarkupInlineKeyboard
-	}{
-		"help_user": {
-			Title:   "User Commands",
-			Content: "<b>Playback:</b>\n• <code>/play [song]</code> — Play a track\n\n<b>Utilities:</b>\n• <code>/start</code> — Start the bot\n• <code>/privacy</code> — View privacy policy\n• <code>/queue</code> — Show current queue",
-			Markup:  core.BackHelpMenuKeyboard(),
-		},
-		"help_admin": {
-			Title:   "Admin Commands",
-			Content: "<b>Controls:</b>\n• <code>/skip</code> — Skip the current track\n• <code>/pause</code> — Pause playback\n• <code>/resume</code> — Resume playback\n• <code>/seek [sec]</code> — Seek to position\n\n<b>Queue:</b>\n• <code>/remove [x]</code> — Remove a track\n• <code>/loop [0-10]</code> — Set loop count\n\n<b>Access:</b>\n• <code>/auth [reply]</code> — Authorize user\n• <code>/unauth [reply]</code> — Remove authorization\n• <code>/authlist</code> — List authorized users",
-			Markup:  core.BackHelpMenuKeyboard(),
-		},
-		"help_devs": {
-			Title:   "Developer Commands",
-			Content: "<b>System:</b>\n• <code>/stats</code> — Show usage statistics\n\n<b>Maintenance:</b>\n• <code>/av</code> — Active voice chats",
-			Markup:  core.BackHelpMenuKeyboard(),
-		},
-		"help_owner": {
-			Title:   "Owner Commands",
-			Content: "<b>Settings:</b>\n• <code>/settings</code> — Chat settings",
-			Markup:  core.BackHelpMenuKeyboard(),
-		},
-		"help_playlist": {
-			Title:   "Playlist Commands",
-			Content: "<b>Management:</b>\n• <code>/createplaylist [name]</code> — Create a playlist\n• <code>/deleteplaylist [id]</code> — Delete a playlist\n• <code>/addtoplaylist [id] [url]</code> — Add a track\n• <code>/removefromplaylist [id] [url]</code> — Remove a track\n• <code>/playlistinfo [id]</code> — Show playlist info\n• <code>/myplaylists</code> — List your playlists",
-			Markup:  core.BackHelpMenuKeyboard(),
-		},
+func helpCallbackHandler(q *tg.CallbackQuery) error {
+	user, err := client.GetUser(q.SenderID)
+	if err != nil {
+		return err
 	}
+
+	data := q.DataString()
+	if strings.HasPrefix(data, "help_") {
+		cmd := strings.TrimPrefix(data, "help_")
+		response := getHelpText(cmd, user.FirstName)
+
+		_, err = q.Edit(response, &tg.SendOptions{
+			ParseMode:   "HTML",
+			LinkPreview: false,
+			ReplyMarkup: core.BackHelpMenuKeyboard(),
+		})
+
+		return err
+	}
+
+	return nil
 }
 
-func helpCallbackHandler(c *td.Client, ctx *td.Context) error {
-	cb := ctx.Update.UpdateNewCallbackQuery
-	data := cb.DataString()
+func getHelpText(cmd string, userName string) string {
+	switch cmd {
+	case "back":
+		return fmt.Sprintf(
+			"<b>Help Menu</b>\n\n" +
+				"ᴛʜᴇ ɪɴᴛᴇʟʟɪɢᴇɴᴛ ᴍᴜsɪᴄ ᴘʟᴀʏᴇʀ ʙᴏᴛ.\n\n" +
+				"<b>ᴄʟɪᴄᴋ ᴏɴ ᴛʜᴇ ʙᴜᴛᴛᴏɴs ʙᴇʟᴏᴡ</b>\n\n" +
+				"<b>ᴄᴏɴᴛᴀᴄᴛ ᴅᴇᴠᴇʟᴏᴘᴇʀ:</b> <a href='tg://user?id=1082088836'>ɴᴇxғᴀɴɢ</a>",
+		)
+	case "user":
+		return `<b>User Commands</b>
 
-	user, err := c.GetUser(cb.SenderUserId)
-	if err != nil {
-		user = &td.User{FirstName: "User", Id: cb.SenderUserId}
+<b>Available User Commands:</b>
+
+ • <code>/play [song name or URL]</code> — Play a song
+ • <code>/search [query]</code> — Search for a song
+ • <code>/skip</code> — Skip to next track
+ • <code>/pause</code> — Pause playback
+ • <code>/resume</code> — Resume playback
+ • <code>/stop</code> — Stop playback
+ • <code>/mute</code> — Mute playback
+ • <code>/unmute</code> — Unmute playback
+ • <code>/queue</code> — View the queue
+ • <code>/loop [count]</code> — Loop current track
+ • <code>/remove [number]</code> — Remove a track from queue
+ • <code>/seek [seconds]</code> — Seek within the current track
+ • <code>/speed [0.5-4.0]</code> — Change playback speed
+
+<b>Playlist Commands:</b>
+ • <code>/createplaylist [name]</code> — Create a playlist
+ • <code>/deleteplaylist [id]</code> — Delete a playlist
+ • <code>/addtoplaylist [id] [url]</code> — Add song to playlist
+ • <code>/removefromplaylist [id] [url]</code> — Remove song from playlist
+ • <code>/playlistinfo [id]</code> — View playlist info
+ • <code>/myplaylists</code> — View your playlists
+
+<b>Note:</b> Use <code>/play</code> with a song name or YouTube/Spotify link.`
+	case "admin":
+		return `<b>Admin Commands</b>
+
+<b>Available Admin Commands:</b>
+
+ • <code>/settings</code> — Change chat settings
+ • <code>/auth</code> — Authorize a user
+ • <code>/addAuth</code> — Add authorized user
+ • <code>/removeAuth</code> — Remove authorized user
+ • <code>/authList</code> — List authorized users
+ • <code>/reload</code> — Reload admin cache
+ • <code>/privacy</code> — Show privacy policy
+
+<b>Settings:</b>
+ • <b>Play Mode:</b> Restrict /play to admins only
+ • <b>Admin Mode:</b> Restrict all commands to admins
+ • <b>Command Delete:</b> Auto-delete command messages
+ • <b>Language:</b> Select bot language (coming soon)
+
+<b>Note:</b> Use /settings in the group to change settings.`
+	case "owner":
+		return `<b>Owner Commands</b>
+
+<b>Settings Commands:</b>
+ • <code>/set_logger_id [id]</code> — Set logger channel ID
+ • <code>/set_support_group [username]</code> — Set support group
+ • <code>/set_support_channel [username]</code> — Set support channel
+ • <code>/set_song_duration [seconds]</code> — Set max song duration
+ • <code>/set_default_service [service]</code> — Set default streaming service
+ • <code>/add_dev [id]</code> — Add a developer
+ • <code>/remove_dev [id]</code> — Remove a developer
+ • <code>/list_settings</code> — List current settings
+
+<b>Account Commands:</b>
+ • <code>/addacc</code> — Add an assistant account (interactive)
+ • <code>/listacc</code> — List all configured assistant accounts
+ • <code>/removeacc [index]</code> — Remove assistant account by index
+ • <code>/cancel</code> — Cancel active /addacc session
+
+<b>Note:</b> These commands are for bot owners only.`
+	case "devs":
+		return `<b>Developer Commands</b>
+
+<b>Available Developer Commands:</b>
+
+ • <code>/stats</code> — View system statistics
+ • <code>/shell</code> or <code>/sh</code> — Execute shell commands
+ • <code>/broadcast</code> or <code>/gcast</code> — Send broadcast to all chats
+ • <code>/stop_broadcast</code> — Stop active broadcast
+ • <code>/active_vc</code> or <code>/av</code> — Show active voice chats
+ • <code>/clearAssistants</code> — Clear all assistant assignments
+ • <code>/leaveAll</code> — Leave all chats
+ • <code>/logger [on/off]</code> — Toggle logger status`
+	case "playlist":
+		return `<b>Playlist Commands</b>
+
+<b>Available Playlist Commands:</b>
+
+ • <code>/createplaylist [name]</code> — Create a new playlist
+ • <code>/deleteplaylist [id]</code> — Delete a playlist
+ • <code>/addtoplaylist [id] [url]</code> — Add a song to a playlist
+ • <code>/removefromplaylist [id] [url]</code> — Remove a song from a playlist
+ • <code>/playlistinfo [id]</code> — View playlist details
+ • <code>/myplaylists</code> — View all your playlists
+
+<b>Usage:</b>
+ • Playlists allow you to save your favorite songs.
+ • Maximum 10 playlists per user.
+ • Maximum 50 songs per playlist.
+
+<b>Note:</b> Use your playlist ID to manage songs.`
+	default:
+		return fmt.Sprintf("Unknown help section: %s", cmd)
 	}
-
-	helpCategories := getHelpCategories()
-
-	if strings.Contains(data, "help_all") {
-		_ = cb.Answer(c, 0, false, "Opening help menu...", "")
-		response := fmt.Sprintf("Hello %s,\n\nI am %s, a fast and powerful music player for Telegram.\n\n<b>Supported platforms:</b> YouTube, Spotify, Apple Music, SoundCloud.\n\nUse the buttons below to explore available commands.", user.FirstName, c.Me.FirstName)
-		_, _ = cb.EditMessageCaption(c, response, &td.EditCaptionOpts{ReplyMarkup: core.HelpMenuKeyboard(), ParseMode: "HTML"})
-		return nil
-	}
-
-	if strings.Contains(data, "help_back") {
-		_ = cb.Answer(c, 0, false, "Returning to main menu...", "")
-		response := fmt.Sprintf("Hello %s,\n\nI am %s, a fast and powerful music player for Telegram.\n\n<b>Supported platforms:</b> YouTube, Spotify, Apple Music, SoundCloud.\n\nUse the buttons below to explore available commands.", user.FirstName, c.Me.FirstName)
-		_, _ = cb.EditMessageCaption(c, response, &td.EditCaptionOpts{ReplyMarkup: core.AddMeMarkup(c.Me.Usernames.EditableUsername), ParseMode: "HTML"})
-		return nil
-	}
-
-	if category, ok := helpCategories[data]; ok {
-		_ = cb.Answer(c, 0, false, category.Title, "")
-		response := fmt.Sprintf("<b>%s</b>\n\n%s\n\n<i>Use the buttons below to go back.</i>", category.Title, category.Content)
-		_, _ = cb.EditMessageCaption(c, response, &td.EditCaptionOpts{ReplyMarkup: category.Markup, ParseMode: "HTML"})
-		return nil
-	}
-
-	_ = cb.Answer(c, 0, true, "Unknown help category.", "")
-	return nil
 }

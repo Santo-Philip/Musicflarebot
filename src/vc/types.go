@@ -1,11 +1,3 @@
-/*
- * TgMusicBot - Telegram Music Bot
- *  Copyright (c) 2025-2026 Ashok Shau
- *
- *  Licensed under GNU GPL v3
- *  See https://github.com/AshokShau/TgMusicBot
- */
-
 package vc
 
 import (
@@ -14,10 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"ashokshau/tgmusic/src/core/cache"
-	"ashokshau/tgmusic/src/vc/ubot"
+	"musicflarebot/src/core/cache"
+	"musicflarebot/src/vc/ubot"
 
-	td "github.com/AshokShau/gotdbot"
 	tg "github.com/amarnathcjd/gogram/telegram"
 )
 
@@ -26,12 +17,13 @@ var urlRegex = regexp.MustCompile(`^https?://`)
 
 // TelegramCalls manages the state and operations for voice calls, including userbots and the main bot client.
 type TelegramCalls struct {
-	mu          sync.RWMutex
-	uBContext   map[int]*ubot.Context
-	clients     map[int]*tg.Client
-	bot         *td.Client
-	statusCache *cache.Cache[td.ChatMemberStatus]
-	inviteCache *cache.Cache[string]
+	mu               sync.RWMutex
+	uBContext        map[int]*ubot.Context
+	clients          map[int]*tg.Client
+	bot              *tg.Client
+	statusCache      *cache.Cache[string]
+	inviteCache      *cache.Cache[string]
+	clientsBySession map[string]int // session string -> client index
 }
 
 var (
@@ -43,10 +35,11 @@ var (
 func getCalls() *TelegramCalls {
 	once.Do(func() {
 		instance = &TelegramCalls{
-			uBContext:   make(map[int]*ubot.Context),
-			clients:     make(map[int]*tg.Client),
-			statusCache: cache.NewCache[td.ChatMemberStatus](2 * time.Hour),
-			inviteCache: cache.NewCache[string](2 * time.Hour),
+			uBContext:        make(map[int]*ubot.Context),
+			clients:          make(map[int]*tg.Client),
+			statusCache:      cache.NewCache[string](2 * time.Hour),
+			inviteCache:      cache.NewCache[string](2 * time.Hour),
+			clientsBySession: make(map[string]int),
 		}
 	})
 	return instance

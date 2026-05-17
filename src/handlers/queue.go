@@ -1,49 +1,39 @@
-/*
- * TgMusicBot - Telegram Music Bot
- *  Copyright (c) 2025-2026 Ashok Shau
- *
- *  Licensed under GNU GPL v3
- *  See https://github.com/AshokShau/TgMusicBot
- */
-
 package handlers
 
 import (
-	"ashokshau/tgmusic/src/utils"
 	"fmt"
 	"math"
+	"musicflarebot/src/utils"
 	"strconv"
 	"strings"
 
-	"ashokshau/tgmusic/src/core/cache"
-	"ashokshau/tgmusic/src/vc"
+	"musicflarebot/src/core/cache"
+	"musicflarebot/src/vc"
 
-	td "github.com/AshokShau/gotdbot"
+	tg "github.com/amarnathcjd/gogram/telegram"
 )
 
-// queueHandler displays the current playback queue with detailed information.
-func queueHandler(c *td.Client, ctx *td.Context) error {
-	if !adminMode(c, ctx) {
-		return td.EndGroups
+func queueHandler(m *tg.NewMessage) error {
+	if !adminMode(m) {
+		return nil
 	}
 
-	m := ctx.EffectiveMessage
-	chatID := ctx.EffectiveChatId
+	chatID := m.ChatID()
 
-	chat, err := c.GetChat(chatID)
+	chat, err := client.GetChat(chatID)
 	if err != nil {
-		_, _ = m.ReplyText(c, "Error fetching chat information.", nil)
+		_, _ = m.Reply("Error fetching chat information.")
 		return nil
 	}
 
 	queue := cache.ChatCache.GetQueue(chatID)
 	if len(queue) == 0 {
-		_, _ = m.ReplyText(c, "The queue is empty.", nil)
+		_, _ = m.Reply("The queue is empty.")
 		return nil
 	}
 
 	if !cache.ChatCache.IsActive(chatID) {
-		_, _ = m.ReplyText(c, "The bot is not streaming in the video chat.", nil)
+		_, _ = m.Reply("The bot is not streaming in the video chat.")
 		return nil
 	}
 
@@ -111,6 +101,6 @@ func queueHandler(c *td.Client, ctx *td.Context) error {
 		text = sb.String()
 	}
 
-	_, err = m.ReplyText(c, text, replyOpts)
+	_, err = m.Reply(text, replyOpts)
 	return err
 }

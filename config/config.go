@@ -1,25 +1,13 @@
-/*
- * TgMusicBot - Telegram Music Bot
- *  Copyright (c) 2025-2026 Ashok Shau
- *
- *  Licensed under GNU GPL v3
- *  See https://github.com/AshokShau/TgMusicBot
- */
-
 package config
 
 import (
-	"fmt"
 	"log/slog"
 	"os"
 	"strconv"
-	"strings"
 )
 
-// Conf is the global configuration for the bot.
 var Conf *BotConfig
 
-// LoadConfig loads the configuration from environment variables and sets the global Conf.
 func LoadConfig() error {
 	envFiles := []string{".env.local", ".env"}
 	if err := loadEnvFiles(envFiles...); err != nil {
@@ -27,46 +15,21 @@ func LoadConfig() error {
 	}
 
 	Conf = &BotConfig{
-		ApiId:             getEnvInt32("API_ID", 0),
-		ApiHash:           os.Getenv("API_HASH"),
-		Token:             os.Getenv("TOKEN"),
-		SessionStrings:    getSessionStrings("STRING", 10),
-		SessionType:       getEnvStr("SESSION_TYPE", "pyrogram"),
-		MongoUri:          os.Getenv("MONGO_URI"),
-		DbName:            getEnvStr("DB_NAME", "Anon"),
-		ApiUrl:            getEnvStr("API_URL", "https://beta.fallenapi.fun"),
-		ApiKey:            os.Getenv("API_KEY"),
-		OwnerId:           getEnvInt64("OWNER_ID"),
-		LoggerId:          getEnvInt64("LOGGER_ID"),
-		Proxy:             os.Getenv("PROXY"),
-		DefaultService:    strings.ToLower(getEnvStr("DEFAULT_SERVICE", "youtube")),
-		MaxFileSize:       getEnvInt64("MAX_FILE_SIZE"),
-		SongDurationLimit: getEnvInt64("SONG_DURATION_LIMIT"),
-		DownloadsDir:      getEnvStr("DOWNLOADS_DIR", "downloads"),
-		SupportGroup:      getEnvStr("SUPPORT_GROUP", "https://t.me/FallenSupport"),
-		SupportChannel:    getEnvStr("SUPPORT_CHANNEL", "https://t.me/FallenProjects"),
-		cookiesUrl:        processCookieURLs(os.Getenv("COOKIES_URL")),
-		StartImg:          getEnvStr("START_IMG", "https://i.pinimg.com/736x/0d/f4/65/0df465d1e98239ecb6283400605fc813.jpg"),
-		Port:              getEnvStr("PORT", "6060"),
-		AutoLeave:         getEnvBool("AUTO_LEAVE", false),
-	}
-
-	devsEnv := os.Getenv("DEVS")
-	if devsEnv != "" {
-		devsEnv = strings.ReplaceAll(devsEnv, "\n", " ")
-		devsEnv = strings.ReplaceAll(devsEnv, ",", " ")
-
-		for _, idStr := range strings.Fields(devsEnv) {
-			idStr = strings.TrimSpace(idStr)
-			if idStr == "" {
-				continue
-			}
-			if id, err := strconv.ParseInt(idStr, 10, 64); err == nil {
-				Conf.DEVS = append(Conf.DEVS, id)
-			} else {
-				slog.Info("Invalid DEV ID ''", "id", idStr, "error", err)
-			}
-		}
+		ApiId:          getEnvInt32("API_ID", 0),
+		ApiHash:        os.Getenv("API_HASH"),
+		Token:          os.Getenv("TOKEN"),
+		SessionStrings: getSessionStrings("STRING", 10),
+		SessionType:    getEnvStr("SESSION_TYPE", "pyrogram"),
+		DatabaseUrl:    os.Getenv("DATABASE_URL"),
+		ApiUrl:         getEnvStr("API_URL", "https://beta.fallenapi.fun"),
+		ApiKey:         os.Getenv("API_KEY"),
+		OwnerId:        getEnvInt64("OWNER_ID"),
+		Proxy:          os.Getenv("PROXY"),
+		MaxFileSize:    getEnvInt64("MAX_FILE_SIZE"),
+		DownloadsDir:   "downloads",
+		StartImg:       getEnvStr("START_IMG", "https://i.pinimg.com/736x/0d/f4/65/0df465d1e98239ecb6283400605fc813.jpg"),
+		Port:           getEnvStr("PORT", "6060"),
+		AutoLeave:      getEnvBool("AUTO_LEAVE", false),
 	}
 
 	if Conf.OwnerId != 0 && !containsInt(Conf.DEVS, Conf.OwnerId) {
@@ -78,28 +41,23 @@ func LoadConfig() error {
 	}
 
 	if err := os.MkdirAll(Conf.DownloadsDir, 0755); err != nil {
-		return fmt.Errorf("failed to create downloads directory: %w", err)
+		return err
 	}
 
-	if len(Conf.cookiesUrl) > 0 {
-		if err := os.MkdirAll(cookiesDr, 0750); err != nil {
-			return fmt.Errorf("failed to create temp dir: %w", err)
-		}
-		go saveAllCookies(Conf.cookiesUrl)
+	if err := os.MkdirAll("src/cookies", 0750); err != nil {
+		return err
 	}
 
 	return nil
 }
 
-// getEnvBool gets environment variable as bool with default value
 func getEnvBool(key string, defaultValue bool) bool {
 	value := os.Getenv(key)
 	if value == "" {
 		return defaultValue
 	}
-	val, err := strconv.ParseBool(value)
-	if err != nil {
-		return defaultValue
+	if val, err := strconv.ParseBool(value); err == nil {
+		return val
 	}
-	return val
+	return defaultValue
 }

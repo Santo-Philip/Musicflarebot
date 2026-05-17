@@ -1,23 +1,15 @@
-/*
- * TgMusicBot - Telegram Music Bot
- *  Copyright (c) 2025-2026 Ashok Shau
- *
- *  Licensed under GNU GPL v3
- *  See https://github.com/AshokShau/TgMusicBot
- */
-
 package handlers
 
 import (
-	"ashokshau/tgmusic/src/core/db"
 	"fmt"
+	"musicflarebot/src/core/db"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"time"
 
-	td "github.com/AshokShau/gotdbot"
+	tg "github.com/amarnathcjd/gogram/telegram"
 )
 
 var (
@@ -29,53 +21,34 @@ func getFloodWait(err error) int {
 	if err == nil {
 		return 0
 	}
-
-	type retryError interface {
-		GetRetryAfter() int
-	}
-
-	if re, ok := err.(retryError); ok {
-		return re.GetRetryAfter()
-	}
-
-	if tdErr, ok := err.(*td.Error); ok {
-		return tdErr.GetRetryAfter()
-	}
-
-	if tdErr, ok := err.(td.Error); ok {
-		return tdErr.GetRetryAfter()
-	}
-
 	return 0
 }
 
-func cancelBroadcastHandler(c *td.Client, ctx *td.Context) error {
-	if !isDev(ctx) {
-		return td.EndGroups
+func cancelBroadcastHandler(m *tg.NewMessage) error {
+	if !isDev(m) {
+		return nil
 	}
-	m := ctx.EffectiveMessage
 	if !broadcastInProgress.Load() {
-		_, _ = m.ReplyText(c, "No broadcast in progress.", nil)
-		return td.EndGroups
+		_, _ = m.Reply("No broadcast in progress.")
+		return nil
 	}
 
 	broadcastCancelFlag.Store(true)
-	_, _ = m.ReplyText(c, "Broadcast stopped.", nil)
-	return td.EndGroups
+	_, _ = m.Reply("Broadcast stopped.")
+	return nil
 }
 
-func broadcastHandler(c *td.Client, ctx *td.Context) error {
-	if !isDev(ctx) {
-		return td.EndGroups
+func broadcastHandler(m *tg.NewMessage) error {
+	if !isDev(m) {
+		return nil
 	}
 
-	m := ctx.EffectiveMessage
 	if broadcastInProgress.Load() {
-		_, _ = m.ReplyText(c, "A broadcast is already in progress.", nil)
-		return td.EndGroups
+		_, _ = m.Reply("A broadcast is already in progress.")
+		return nil
 	}
 
-	reply, err := m.GetRepliedMessage(c)
+	reply, err := getReplyMessage(m)
 	if err != nil {
 		usage := `Please reply to a message to broadcast.
 
@@ -91,14 +64,14 @@ Examples:
 /broadcast -user -copy
 `
 
-		_, _ = m.ReplyText(c, usage, nil)
-		return td.EndGroups
+		_, _ = m.Reply(usage)
+		return nil
 	}
 
 	args := strings.Fields(Args(m))
 
 	copyMode := false
-	mode := "both" // default
+	mode := "both"
 
 	for _, a := range args {
 		switch a {
@@ -134,14 +107,14 @@ Examples:
 	}
 
 	if len(targets) == 0 {
-		_, _ = m.ReplyText(c, "No targets found.", nil)
-		return td.EndGroups
+		_, _ = m.Reply("No targets found.")
+		return nil
 	}
 
 	broadcastCancelFlag.Store(false)
 	broadcastInProgress.Store(true)
 
-	sentMsg, _ := m.ReplyText(c, "Broadcast started.", nil)
+	sentMsg, _ := m.Reply("Broadcast started.")
 
 	go func() {
 		defer broadcastInProgress.Store(false)
@@ -151,21 +124,17 @@ Examples:
 
 		for _, chatID := range targets {
 			if broadcastCancelFlag.Load() {
-				_, _ = sentMsg.EditText(
-					c,
+				_, _ = sentMsg.Edit(
 					fmt.Sprintf("Broadcast stopped.\nGroups: %d\nUsers: %d", count, ucount),
-					nil,
 				)
 				return
 			}
 
 			var errSend error
 			if copyMode {
-				_, errSend = reply.Copy(c, chatID, &td.SendCopyOpts{
-					ReplyMarkup: reply.ReplyMarkup,
-				})
+				_, errSend = reply.ForwardTo(chatID, &tg.ForwardOptions{HideAuthor: true})
 			} else {
-				_, errSend = reply.Forward(c, chatID, &td.ForwardMessageOpts{})
+				_, errSend = reply.ForwardTo(chatID)
 			}
 
 			if errSend == nil {
@@ -197,22 +166,21 @@ Examples:
 			if err := os.WriteFile(errFile, []byte(failedStr), 0644); err == nil {
 				defer os.Remove(errFile)
 
-				_, errSendDoc := m.ReplyDocument(
-					c,
-					td.InputFileLocal{Path: errFile},
-					&td.SendDocumentOpts{Caption: text},
-				)
+				_, errSendDoc := m.ReplyMedia(errFile, &tg.MediaOptions{
+					ForceDocument: true,
+					Caption:       text,
+				})
 
 				if errSendDoc != nil {
-					_, _ = sentMsg.EditText(c, text, nil)
+					_, _ = sentMsg.Edit(text)
 				}
 			} else {
-				_, _ = sentMsg.EditText(c, text, nil)
+				_, _ = sentMsg.Edit(text)
 			}
 		} else {
-			_, _ = sentMsg.EditText(c, text, nil)
+			_, _ = sentMsg.Edit(text)
 		}
 	}()
 
-	return td.EndGroups
+	return nil
 }

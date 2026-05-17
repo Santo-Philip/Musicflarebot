@@ -1,37 +1,25 @@
-/*
- * TgMusicBot - Telegram Music Bot
- *  Copyright (c) 2025-2026 Ashok Shau
- *
- *  Licensed under GNU GPL v3
- *  See https://github.com/AshokShau/TgMusicBot
- */
-
 package handlers
 
 import (
-	"ashokshau/tgmusic/config"
 	"fmt"
+	"musicflarebot/config"
 	"strings"
 
-	"ashokshau/tgmusic/src/core/cache"
-	"ashokshau/tgmusic/src/core/db"
-	"ashokshau/tgmusic/src/vc"
+	"musicflarebot/src/core/cache"
+	"musicflarebot/src/core/db"
+	"musicflarebot/src/vc"
 
-	td "github.com/AshokShau/gotdbot"
+	tg "github.com/amarnathcjd/gogram/telegram"
 )
 
-// activeVcHandler handles the /activevc command.
-// It takes a telegram.NewMessage object as input.
-// It returns an error if any.
-func activeVcHandler(c *td.Client, ctx *td.Context) error {
-	if !isDev(ctx) {
-		return td.EndGroups
+func activeVcHandler(m *tg.NewMessage) error {
+	if !isDev(m) {
+		return nil
 	}
 
-	m := ctx.EffectiveMessage
 	activeChats := cache.ChatCache.GetActiveChats()
 	if len(activeChats) == 0 {
-		_, err := m.ReplyText(c, "No active chats found.", nil)
+		_, err := m.Reply("No active chats found.")
 		return err
 	}
 
@@ -67,7 +55,7 @@ func activeVcHandler(c *td.Client, ctx *td.Context) error {
 		text = fmt.Sprintf("🎵 <b>Active Voice Chats</b> (%d)", len(activeChats))
 	}
 
-	_, err := m.ReplyText(c, text, &td.SendTextMessageOpts{ParseMode: "HTML", DisableWebPagePreview: true})
+	_, err := m.Reply(text, &tg.SendOptions{ParseMode: "HTML", LinkPreview: false})
 	if err != nil {
 		return err
 	}
@@ -75,76 +63,68 @@ func activeVcHandler(c *td.Client, ctx *td.Context) error {
 	return nil
 }
 
-// Handles the /clearass command to remove all assistant assignments
-func clearAssistantsHandler(c *td.Client, ctx *td.Context) error {
-	if !isDev(ctx) {
-		return td.EndGroups
+func clearAssistantsHandler(m *tg.NewMessage) error {
+	if !isDev(m) {
+		return nil
 	}
-
-	m := ctx.EffectiveMessage
 
 	done, err := db.Instance.ClearAllAssistants()
 	if err != nil {
-		_, _ = m.ReplyText(c, fmt.Sprintf("failed to clear assistants: %s", err.Error()), nil)
-		return td.EndGroups
+		_, _ = m.Reply(fmt.Sprintf("failed to clear assistants: %s", err.Error()))
+		return nil
 	}
 
-	_, err = m.ReplyText(c, fmt.Sprintf("Removed assistant from %d chats", done), nil)
+	_, err = m.Reply(fmt.Sprintf("Removed assistant from %d chats", done))
 	return err
 }
 
-// Handles the /leaveall command to leave all chats
-func leaveAllHandler(c *td.Client, ctx *td.Context) error {
-	if !isDev(ctx) {
-		return td.EndGroups
+func leaveAllHandler(m *tg.NewMessage) error {
+	if !isDev(m) {
+		return nil
 	}
 
-	m := ctx.EffectiveMessage
-	reply, err := m.ReplyText(c, "Assistant is leaving all chats...", nil)
+	reply, err := m.Reply("Assistant is leaving all chats...")
 	if err != nil {
 		return err
 	}
 
 	leftCount, err := vc.Calls.LeaveAll()
 	if err != nil {
-		_, _ = reply.EditText(c, fmt.Sprintf("Failed to leave all chats: %s", err.Error()), nil)
+		_, _ = reply.Edit(fmt.Sprintf("Failed to leave all chats: %s", err.Error()))
 		return err
 	}
 
-	_, err = reply.EditText(c, fmt.Sprintf("Assistant's Left %d chats", leftCount), nil)
+	_, err = reply.Edit(fmt.Sprintf("Assistant's Left %d chats", leftCount))
 	return err
 }
 
-// Handles the /logger command to toggle logger status
-func loggerHandler(c *td.Client, ctx *td.Context) error {
-	if !isDev(ctx) {
-		return td.EndGroups
+func loggerHandler(m *tg.NewMessage) error {
+	if !isDev(m) {
+		return nil
 	}
 
-	m := ctx.EffectiveMessage
-
 	if config.Conf.LoggerId == 0 {
-		_, _ = m.ReplyText(c, "Please set LOGGER_ID in .env first.", nil)
-		return td.EndGroups
+		_, _ = m.Reply("Please set LOGGER_ID in .env first.")
+		return nil
 	}
 
 	loggerStatus := db.Instance.GetLoggerStatus()
 	args := strings.ToLower(Args(m))
 	if len(args) == 0 {
-		_, _ = m.ReplyText(c, fmt.Sprintf("Usage: /logger [enable|disable|on|off]\nCurrent status: %t", loggerStatus), nil)
-		return td.EndGroups
+		_, _ = m.Reply(fmt.Sprintf("Usage: /logger [enable|disable|on|off]\nCurrent status: %t", loggerStatus))
+		return nil
 	}
 
 	switch args {
 	case "enable", "on":
 		_ = db.Instance.SetLoggerStatus(true)
-		_, _ = m.ReplyText(c, "Logger Enabled", nil)
+		_, _ = m.Reply("Logger Enabled")
 	case "disable", "off":
 		_ = db.Instance.SetLoggerStatus(false)
-		_, _ = m.ReplyText(c, "Logger disabled", nil)
+		_, _ = m.Reply("Logger disabled")
 	default:
-		_, _ = m.ReplyText(c, "Invalid argument. Use 'enable', 'disable', 'on', or 'off'.", nil)
+		_, _ = m.Reply("Invalid argument. Use 'enable', 'disable', 'on', or 'off'.")
 	}
 
-	return td.EndGroups
+	return nil
 }

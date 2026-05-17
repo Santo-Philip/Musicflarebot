@@ -1,91 +1,56 @@
-/*
- * TgMusicBot - Telegram Music Bot
- *  Copyright (c) 2025-2026 Ashok Shau
- *
- *  Licensed under GNU GPL v3
- *  See https://github.com/AshokShau/TgMusicBot
- */
-
 package handlers
 
 import (
-	"ashokshau/tgmusic/config"
 	"errors"
 	"fmt"
+	"musicflarebot/config"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/AshokShau/gotdbot"
+	"log/slog"
+
+	tg "github.com/amarnathcjd/gogram/telegram"
 )
 
-func Args(m *gotdbot.Message) string {
-	Messages := strings.Split(m.Text(), " ")
-	if len(Messages) < 2 {
+func Args(m *tg.NewMessage) string {
+	parts := strings.Split(m.Text(), " ")
+	if len(parts) < 2 {
 		return ""
 	}
-	return strings.TrimSpace(strings.Join(Messages[1:], " "))
+	return strings.TrimSpace(strings.Join(parts[1:], " "))
 }
 
-func firstName(c *gotdbot.Client, m *gotdbot.Message) string {
-	if m.SenderId == nil {
+func firstName(m *tg.NewMessage) string {
+	user, err := client.GetUser(m.SenderID())
+	if err != nil {
 		return "Unknown"
 	}
-
-	if u, ok := m.SenderId.(*gotdbot.MessageSenderUser); ok {
-		user, err := c.GetUser(u.UserId)
-		if err != nil {
-			return "Unknown"
-		}
-		return user.FirstName
-	}
-
-	if ch, ok := m.SenderId.(*gotdbot.MessageSenderChat); ok {
-		chat, err := c.GetChat(ch.ChatId)
-		if err != nil {
-			return "Unknown"
-		}
-		return chat.Title
-	}
-
-	return "Unknown"
+	return user.FirstName
 }
 
-var replyOpts = &gotdbot.SendTextMessageOpts{
-	ParseMode:             "HTML",
-	DisableWebPagePreview: true,
+var replyOpts = &tg.SendOptions{
+	ParseMode:   "HTML",
+	LinkPreview: false,
 }
 
-// isDev checks if the user is a developer.
-// It returns true if the user is a developer, otherwise false.
-func isDev(ctx *gotdbot.Context) bool {
-	m := ctx.EffectiveMessage
-
+func isDev(m *tg.NewMessage) bool {
+	userID := m.SenderID()
 	for _, dev := range config.Conf.DEVS {
-		if dev == m.SenderID() {
+		if dev == userID {
 			return true
 		}
 	}
-
 	return false
 }
 
-func SenderID(sender gotdbot.MessageSender) int64 {
-	switch s := sender.(type) {
-	case *gotdbot.MessageSenderUser:
-		return s.UserId
-	case *gotdbot.MessageSenderChat:
-		return s.ChatId
-	default:
-		return 0
-	}
+func IsPrivate(m *tg.NewMessage) bool {
+	return m.ChatID() > 0
 }
 
-// getTargetUserID resolves a target user ID from a reply or command arguments.
-// Resolution order: replied message → numeric ID → @username lookup.
-func getTargetUserID(c *gotdbot.Client, m *gotdbot.Message) (int64, error) {
-	if m.ReplyToMessageID() != 0 {
-		return resolveFromReply(c, m)
+func getTargetUserID(m *tg.NewMessage) (int64, error) {
+	if m.ReplyToMsgID() != 0 {
+		return resolveFromReply(m)
 	}
 
 	args := strings.Fields(Args(m))
@@ -93,7 +58,7 @@ func getTargetUserID(c *gotdbot.Client, m *gotdbot.Message) (int64, error) {
 		return 0, errors.New("no target specified: reply to a message or provide a user ID/username")
 	}
 
-	userID, err := resolveFromArg(c, args[0])
+	userID, err := resolveFromArg(args[0])
 	if err != nil {
 		return 0, err
 	}
@@ -105,9 +70,15 @@ func getTargetUserID(c *gotdbot.Client, m *gotdbot.Message) (int64, error) {
 	return userID, nil
 }
 
-// resolveFromReply extracts the sender ID from the replied-to message.
-func resolveFromReply(c *gotdbot.Client, m *gotdbot.Message) (int64, error) {
-	replyMsg, err := m.GetRepliedMessage(c)
+func getReplyMessage(m *tg.NewMessage) (*tg.NewMessage, error) {
+	if m.ReplyToMsgID() == 0 {
+		return nil, errors.New("no reply")
+	}
+	return client.GetMessageByID(m.ChatID(), m.ReplyToMsgID())
+}
+
+func resolveFromReply(m *tg.NewMessage) (int64, error) {
+	replyMsg, err := getReplyMessage(m)
 	if err != nil {
 		return 0, fmt.Errorf("failed to fetch replied message: %w", err)
 	}
@@ -120,8 +91,7 @@ func resolveFromReply(c *gotdbot.Client, m *gotdbot.Message) (int64, error) {
 	return userID, nil
 }
 
-// resolveFromArg parses a user ID or @username from a raw argument string.
-func resolveFromArg(c *gotdbot.Client, arg string) (int64, error) {
+func resolveFromArg(arg string) (int64, error) {
 	if id, err := strconv.ParseInt(arg, 10, 64); err == nil {
 		if id <= 0 {
 			return 0, fmt.Errorf("invalid user ID: %d", id)
@@ -129,28 +99,37 @@ func resolveFromArg(c *gotdbot.Client, arg string) (int64, error) {
 		return id, nil
 	}
 
-	return resolveUsername(c, arg)
+	return resolveUsername(arg)
 }
 
-// resolveUsername looks up a Telegram username and returns its chat ID.
-func resolveUsername(c *gotdbot.Client, username string) (int64, error) {
+func resolveUsername(username string) (int64, error) {
 	username = strings.TrimPrefix(username, "@")
 	if username == "" {
 		return 0, errors.New("username cannot be empty")
 	}
 
-	chat, err := c.SearchPublicChat(username)
+	result, err := client.ResolveUsername(username)
 	if err != nil {
+		slog.Warn("username lookup failed", "username", username, "error", err)
 		return 0, fmt.Errorf("username lookup failed for %q: %w", username, err)
 	}
-	if chat == nil {
+
+	if result == nil {
 		return 0, fmt.Errorf("no user found for username %q", username)
 	}
 
-	return chat.Id, nil
+	switch peer := result.(type) {
+	case *tg.InputPeerUser:
+		return peer.UserID, nil
+	case *tg.InputPeerChannel:
+		return peer.ChannelID, nil
+	case *tg.InputPeerChat:
+		return peer.ChatID, nil
+	default:
+		return 0, fmt.Errorf("unknown peer type for username %q", username)
+	}
 }
 
-// plural returns the unit with correct singular/plural form.
 func plural(n int, unit string) string {
 	if n == 1 {
 		return fmt.Sprintf("%d %s", n, unit)
@@ -158,7 +137,6 @@ func plural(n int, unit string) string {
 	return fmt.Sprintf("%d %ss", n, unit)
 }
 
-// getFormattedDuration returns a human-readable string for the given duration.
 func getFormattedDuration(diff time.Duration) string {
 	totalSeconds := int(diff.Seconds())
 

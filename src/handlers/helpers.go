@@ -1,103 +1,109 @@
-/*
- * TgMusicBot - Telegram Music Bot
- *  Copyright (c) 2025-2026 Ashok Shau
- *
- *  Licensed under GNU GPL v3
- *  See https://github.com/AshokShau/TgMusicBot
- */
-
 package handlers
 
 import (
 	"strings"
 
-	td "github.com/AshokShau/gotdbot"
+	tg "github.com/amarnathcjd/gogram/telegram"
 )
 
-func getUrl(c *td.Client, m *td.Message, isReply bool) string {
-	text := m.GetText()
-	entities := m.GetEntities()
+func entityText(text string, entity tg.MessageEntity) string {
+	switch e := entity.(type) {
+	case *tg.MessageEntityURL:
+		return text[e.Offset : e.Offset+e.Length]
+	case *tg.MessageEntityTextURL:
+		return e.URL
+	}
+	return ""
+}
+
+func getUrl(m *tg.NewMessage, isReply bool) string {
+	text := m.Text()
+	entities := m.Message.Entities
 
 	if isReply {
-		reply, err := m.GetRepliedMessage(c)
+		reply, err := getReplyMessage(m)
 		if err == nil && reply != nil {
 			text = reply.Text()
-			entities = reply.GetEntities()
+			entities = reply.Message.Entities
 		}
 	}
 
-	if entities == nil || len(entities) == 0 {
-		return ""
-	}
-
 	for _, entity := range entities {
-		switch t := entity.Type.(type) {
-
-		case *td.TextEntityTypeUrl:
-			start := entity.Offset
-			end := entity.Offset + entity.Length
-			if int(end) <= len(text) {
-				return text[start:end]
-			}
-
-		case *td.TextEntityTypeTextUrl:
-			return t.Url
+		if url := entityText(text, entity); url != "" {
+			return url
 		}
 	}
 
 	return ""
 }
 
-func isValidMedia(reply *td.Message) bool {
-	if reply == nil || reply.Content == nil {
+func isValidMedia(m *tg.NewMessage) bool {
+	if m == nil {
 		return false
 	}
 
-	switch msg := reply.Content.(type) {
-
-	case *td.MessageAudio,
-		*td.MessageVoiceNote,
-		*td.MessageVideo,
-		*td.MessageVideoNote:
+	if m.Audio() != nil || m.Voice() != nil || m.Video() != nil {
 		return true
+	}
 
-	case *td.MessageDocument:
-		if msg.Document == nil {
-			return false
-		}
-		mime := strings.ToLower(msg.Document.MimeType)
+	if doc := m.Document(); doc != nil {
+		mime := strings.ToLower(doc.MimeType)
 		if strings.HasPrefix(mime, "audio/") || strings.HasPrefix(mime, "video/") {
 			return true
 		}
-
-		return false
 	}
 
 	return false
 }
 
-func getFile(m *td.Message) (*td.File, string) {
-	if m == nil || m.Content == nil {
-		return nil, ""
+func documentName(doc *tg.DocumentObj) string {
+	for _, attr := range doc.Attributes {
+		switch a := attr.(type) {
+		case *tg.DocumentAttributeAudio:
+			if a.Title != "" {
+				return a.Title
+			}
+		case *tg.DocumentAttributeFilename:
+			return a.FileName
+		case *tg.DocumentAttributeVideo:
+		}
 	}
-
-	switch content := m.Content.(type) {
-	case *td.MessageAudio:
-		return content.Audio.Audio, content.Audio.Title
-	case *td.MessageVoiceNote:
-		return content.VoiceNote.Voice, "voice_note.ogg"
-	case *td.MessageVideo:
-		return content.Video.Video, content.Video.FileName
-	case *td.MessageVideoNote:
-		return content.VideoNote.Video, "video_note.mp4"
-	case *td.MessageDocument:
-		return content.Document.Document, content.Document.FileName
-	default:
-		return nil, ""
-	}
+	return ""
 }
 
-// coalesce returns the first non-empty string.
+func getFileInfo(m *tg.NewMessage) (string, int64) {
+	if m == nil {
+		return "", 0
+	}
+
+	if audio := m.Audio(); audio != nil {
+		name := documentName(audio)
+		if name == "" {
+			name = "audio"
+		}
+		return name, audio.Size
+	}
+	if voice := m.Voice(); voice != nil {
+		return "voice_note.ogg", voice.Size
+	}
+	if video := m.Video(); video != nil {
+		name := documentName(video)
+		if name == "" {
+			name = "video"
+		}
+		return name, video.Size
+	}
+	if doc := m.Document(); doc != nil {
+		name := documentName(doc)
+		if name == "" {
+			name = "file"
+		}
+		return name, doc.Size
+	}
+
+	return "", 0
+}
+
 func coalesce(a, b string) string {
 	if a != "" {
 		return a
@@ -105,7 +111,6 @@ func coalesce(a, b string) string {
 	return b
 }
 
-// truncate truncates a string to a maximum length.
 func truncate(s string, max int) string {
 	if len(s) <= max {
 		return s

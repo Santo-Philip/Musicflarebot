@@ -1,34 +1,16 @@
-/*
- * TgMusicBot - Telegram Music Bot
- *  Copyright (c) 2025-2026 Ashok Shau
- *
- *  Licensed under GNU GPL v3
- *  See https://github.com/AshokShau/TgMusicBot
- */
-
 package vc
 
-/*
-#cgo linux LDFLAGS: -L . -lntgcalls -lm -lz
-#cgo darwin LDFLAGS: -L . -lntgcalls -lc++ -lz -lbz2 -liconv -framework AVFoundation -framework AudioToolbox -framework CoreAudio -framework QuartzCore -framework CoreMedia -framework VideoToolbox -framework AppKit -framework Metal -framework MetalKit -framework OpenGL -framework IOSurface -framework ScreenCaptureKit
-
-// Currently is supported only dynamically linked library on Windows due to
-// https://github.com/golang/go/issues/63903
-#cgo windows LDFLAGS: -L. -lntgcalls
-#include "ntgcalls/ntgcalls.h"
-#include "glibc_compatibility.h"
-*/
 import "C"
 
 import (
-	"ashokshau/tgmusic/config"
-	"ashokshau/tgmusic/src/core"
-	"ashokshau/tgmusic/src/core/cache"
-	"ashokshau/tgmusic/src/core/db"
-	"ashokshau/tgmusic/src/core/dl"
-	"ashokshau/tgmusic/src/utils"
-	"ashokshau/tgmusic/src/vc/ntgcalls"
-	"ashokshau/tgmusic/src/vc/ubot"
+	"musicflarebot/config"
+	"musicflarebot/src/core"
+	"musicflarebot/src/core/cache"
+	"musicflarebot/src/core/db"
+	"musicflarebot/src/core/dl"
+	"musicflarebot/src/utils"
+	"musicflarebot/src/vc/ntgcalls"
+	"musicflarebot/src/vc/ubot"
 	"context"
 	"crypto/rand"
 	"errors"
@@ -39,7 +21,7 @@ import (
 	"os"
 	"strings"
 
-	td "github.com/AshokShau/gotdbot"
+	tg "github.com/amarnathcjd/gogram/telegram"
 )
 
 const DefaultStreamURL = "https://t.me/FallenSongs/1295"
@@ -205,21 +187,20 @@ func (c *TelegramCalls) PlayMedia(chatID int64, filePath string, video bool, ffm
 }
 
 // downloadAndPrepareSong handles the download and preparation of a song for playback.
-// It returns an error if the download or preparation fails.
-func (c *TelegramCalls) downloadAndPrepareSong(song *utils.CachedTrack, reply *td.Message) error {
+func (c *TelegramCalls) downloadAndPrepareSong(song *utils.CachedTrack, reply *tg.NewMessage) error {
 	if song.FilePath != "" {
 		return nil
 	}
 
 	dlPath, err := dl.DownloadCachedTrack(song, c.bot)
 	if err != nil {
-		_, _ = reply.EditText(c.bot, "⚠️ Download failed. Skipping track...", nil)
+		_, _ = reply.Edit("⚠️ Download failed. Skipping track...", nil)
 		return err
 	}
 
 	song.FilePath = dlPath
 	if song.FilePath == "" {
-		_, _ = reply.EditText(c.bot, "⚠️ Download failed. Skipping track...", nil)
+		_, _ = reply.Edit("⚠️ Download failed. Skipping track...", nil)
 		return errors.New("download failed due to an empty file path")
 	}
 
@@ -245,18 +226,16 @@ func (c *TelegramCalls) PlayNext(chatID int64) error {
 	return c.handleNoSong(chatID)
 }
 
-// handleNoSong manages the situation where there are no more songs in the queue by stopping the playback
-// and sending a notification to the chat.
+// handleNoSong manages the situation where there are no more songs in the queue.
 func (c *TelegramCalls) handleNoSong(chatID int64) error {
 	_ = c.Stop(chatID)
-	_, _ = c.bot.SendTextMessage(chatID, "🎵 Queue finished. Add more songs with /play.", nil)
+	_, _ = c.bot.SendMessage(chatID, "🎵 Queue finished. Add more songs with /play.", nil)
 	return nil
 }
 
-// playSong downloads and plays a single song. It sends a message to the chat to indicate the download status
-// and updates it with the song's information once playback begins.
+// playSong downloads and plays a single song.
 func (c *TelegramCalls) playSong(chatID int64, song *utils.CachedTrack) error {
-	reply, err := c.bot.SendTextMessage(chatID, fmt.Sprintf("Downloading %s...", song.Name), nil)
+	reply, err := c.bot.SendMessage(chatID, fmt.Sprintf("Downloading %s...", song.Name), nil)
 	if err != nil {
 		slog.Info("[playSong] Failed to send message", "error", err)
 		return err
@@ -267,7 +246,7 @@ func (c *TelegramCalls) playSong(chatID int64, song *utils.CachedTrack) error {
 	}
 
 	if err = c.PlayMedia(chatID, song.FilePath, song.IsVideo, ""); err != nil {
-		_, err := reply.EditText(c.bot, err.Error(), &td.EditTextMessageOpts{ParseMode: "HTML", DisableWebPagePreview: true})
+		_, err := reply.Edit(err.Error(), &tg.SendOptions{ParseMode: "HTML", LinkPreview: false})
 		return err
 	}
 
@@ -287,10 +266,10 @@ func (c *TelegramCalls) playSong(chatID int64, song *utils.CachedTrack) error {
 		escUser,
 	)
 
-	_, err = reply.EditText(c.bot, text, &td.EditTextMessageOpts{
-		ReplyMarkup:           core.ControlButtons("play"),
-		ParseMode:             "HTML",
-		DisableWebPagePreview: true,
+	_, err = reply.Edit(text, &tg.SendOptions{
+		ReplyMarkup: core.ControlButtons("play"),
+		ParseMode:   "HTML",
+		LinkPreview: false,
 	})
 
 	if err != nil {
@@ -322,7 +301,6 @@ func (c *TelegramCalls) Stop(chatId int64) error {
 }
 
 // Pause temporarily stops media playback in a voice chat.
-// It returns true if the operation was successful, and an error otherwise.
 func (c *TelegramCalls) Pause(chatId int64) (bool, error) {
 	call, index, err := c.GetGroupAssistant(chatId)
 	if err != nil {
@@ -468,7 +446,7 @@ func (c *TelegramCalls) ChangeSpeed(chatID int64, speed float64) error {
 }
 
 // RegisterHandlers sets up the event handlers for the voice call client.
-func (c *TelegramCalls) RegisterHandlers(client *td.Client) {
+func (c *TelegramCalls) RegisterHandlers(client *tg.Client) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -495,22 +473,20 @@ func (c *TelegramCalls) RegisterHandlers(client *td.Client) {
 				return
 			}
 
-			file, err := msg.Download(c.bot, 1, 0, 0, true)
+			path, err := msg.Download()
 			if err != nil {
 				call.App.Logger.Warnf("[OnIncomingCall] Failed to download the message: %v", err)
 				return
 			}
 
-			err = c.PlayMedia(chatID, file.Local.Path, false, "")
+			err = c.PlayMedia(chatID, path, false, "")
 			if err != nil {
 				call.App.Logger.Warnf("[OnIncomingCall] Failed to play the media: %v", err)
 				return
 			}
-
-			return
 		})
 
-		_, err := call.App.SendMessage(client.Me.Usernames.EditableUsername, "/start")
+		_, err := call.App.SendMessage(client.Me().Username, "/start")
 		if err != nil {
 			call.App.Logger.Warnf("failed to start bot: %v", err)
 		}

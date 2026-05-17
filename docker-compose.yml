@@ -1,4 +1,27 @@
 services:
-  tgmusic:
+  musicflarebot:
     build: .
     env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://musicflare:musicflare@postgres:5432/musicflarebot
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: musicflare
+      POSTGRES_PASSWORD: musicflare
+      POSTGRES_DB: musicflarebot
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U musicflare -d musicflarebot"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:

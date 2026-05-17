@@ -1,86 +1,111 @@
-/*
- * TgMusicBot - Telegram Music Bot
- *  Copyright (c) 2025-2026 Ashok Shau
- *
- *  Licensed under GNU GPL v3
- *  See https://github.com/AshokShau/TgMusicBot
- */
-
 package handlers
 
 import (
-	"log/slog"
 	"time"
 
-	"github.com/AshokShau/gotdbot"
-	"github.com/AshokShau/gotdbot/handlers"
-	"github.com/AshokShau/gotdbot/handlers/filters/callbackquery"
+	tg "github.com/amarnathcjd/gogram/telegram"
 )
 
 var startTime = time.Now()
+var client *tg.Client
 
-// LoadModules loads all the handlers.
-// It takes a telegram gotdbot.Dispatcher as input.
-func LoadModules(d *gotdbot.Dispatcher) {
-	d.AddHandler(handlers.NewCommand("reload", reloadAdminCacheHandler))
-	d.AddHandler(handlers.NewCommand("authList", authListHandler))
-	d.AddHandler(handlers.NewCommand("auths", authListHandler))
-	d.AddHandler(handlers.NewCommand("auth", addAuthHandler))
-	d.AddHandler(handlers.NewCommand("addAuth", addAuthHandler))
-	d.AddHandler(handlers.NewCommand("removeAuth", removeAuthHandler))
-	d.AddHandler(handlers.NewCommand("rmAuth", removeAuthHandler))
-	d.AddHandler(handlers.NewCommand("broadcast", broadcastHandler))
-	d.AddHandler(handlers.NewCommand("gCast", broadcastHandler))
-	d.AddHandler(handlers.NewCommand("stop_gcast", cancelBroadcastHandler))
-	d.AddHandler(handlers.NewCommand("stop_broadcast", cancelBroadcastHandler))
-	d.AddHandler(handlers.NewCommand("av", activeVcHandler))
-	d.AddHandler(handlers.NewCommand("active_vc", activeVcHandler))
-	d.AddHandler(handlers.NewCommand("clearass", clearAssistantsHandler))
-	d.AddHandler(handlers.NewCommand("clearAssistants", clearAssistantsHandler))
-	d.AddHandler(handlers.NewCommand("leaveAll", leaveAllHandler))
-	d.AddHandler(handlers.NewCommand("logger", loggerHandler))
-	d.AddHandler(handlers.NewCommand("privacy", privacyHandler))
-	d.AddHandler(handlers.NewCommand("loop", loopHandler))
-	d.AddHandler(handlers.NewCommand("pause", pauseHandler))
-	d.AddHandler(handlers.NewCommand("resume", resumeHandler))
-	d.AddHandler(handlers.NewCommand("cplist", createPlaylistHandler))
-	d.AddHandler(handlers.NewCommand("createplaylist", createPlaylistHandler))
-	d.AddHandler(handlers.NewCommand("deleteplaylist", deletePlaylistHandler))
-	d.AddHandler(handlers.NewCommand("queue", queueHandler))
-	d.AddHandler(handlers.NewCommand("seek", seekHandler))
-	d.AddHandler(handlers.NewCommand("sh", shellCommand))
-	d.AddHandler(handlers.NewCommand("skip", skipHandler))
-	d.AddHandler(handlers.NewCommand("speed", speedHandler))
-	d.AddHandler(handlers.NewCommand("stop", stopHandler))
-	d.AddHandler(handlers.NewCommand("end", stopHandler))
-	d.AddHandler(handlers.NewCommand("start", startHandler))
-	d.AddHandler(handlers.NewCommand("help", startHandler))
-	d.AddHandler(handlers.NewCommand("ping", pingHandler))
-	d.AddHandler(handlers.NewCommand("play", playHandler))
-	d.AddHandler(handlers.NewCommand("p", playHandler))
-	d.AddHandler(handlers.NewCommand("vplay", vPlayHandler))
-	d.AddHandler(handlers.NewCommand("v", vPlayHandler))
-	d.AddHandler(handlers.NewCommand("remove", removeHandler))
-	d.AddHandler(handlers.NewCommand("mute", muteHandler))
-	d.AddHandler(handlers.NewCommand("unmute", unmuteHandler))
-	d.AddHandler(handlers.NewCommand("settings", settingsHandler))
-	d.AddHandler(handlers.NewCommand("addtoplaylist", addToPlaylistHandler))
-	d.AddHandler(handlers.NewCommand("addtoplist", addToPlaylistHandler))
-	d.AddHandler(handlers.NewCommand("removefromplaylist", removeFromPlaylistHandler))
-	d.AddHandler(handlers.NewCommand("rmplist", removeFromPlaylistHandler))
-	d.AddHandler(handlers.NewCommand("plistinfo", playlistInfoHandler))
-	d.AddHandler(handlers.NewCommand("playlistinfo", playlistInfoHandler))
-	d.AddHandler(handlers.NewCommand("myplaylists", myPlaylistsHandler))
-	d.AddHandler(handlers.NewCommand("myplist", myPlaylistsHandler))
-	d.AddHandler(handlers.NewCommand("stats", statsHandler))
+func LoadModules(c *tg.Client) {
+	client = c
 
-	d.AddHandler(handlers.NewUpdateNewCallbackQuery(callbackquery.Prefix("help_"), helpCallbackHandler))
-	d.AddHandler(handlers.NewUpdateNewCallbackQuery(callbackquery.Prefix("play_"), playCallbackHandler))
-	d.AddHandler(handlers.NewUpdateNewCallbackQuery(callbackquery.Prefix("vcplay_"), vcPlayHandler))
-	d.AddHandler(handlers.NewUpdateNewCallbackQuery(callbackquery.Prefix("settings_"), settingsCallbackHandler))
+	c.OnCommand("reload", reloadAdminCacheHandler)
+	c.OnCommand("authList", authListHandler)
+	c.OnCommand("auths", authListHandler)
+	c.OnCommand("auth", addAuthHandler)
+	c.OnCommand("addAuth", addAuthHandler)
+	c.OnCommand("removeAuth", removeAuthHandler)
+	c.OnCommand("rmAuth", removeAuthHandler)
+	c.OnCommand("broadcast", broadcastHandler)
+	c.OnCommand("gCast", broadcastHandler)
+	c.OnCommand("stop_gcast", cancelBroadcastHandler)
+	c.OnCommand("stop_broadcast", cancelBroadcastHandler)
+	c.OnCommand("av", activeVcHandler)
+	c.OnCommand("active_vc", activeVcHandler)
+	c.OnCommand("clearass", clearAssistantsHandler)
+	c.OnCommand("clearAssistants", clearAssistantsHandler)
+	c.OnCommand("leaveAll", leaveAllHandler)
+	c.OnCommand("logger", loggerHandler)
+	c.OnCommand("privacy", privacyHandler)
+	c.OnCommand("loop", loopHandler)
+	c.OnCommand("pause", pauseHandler)
+	c.OnCommand("resume", resumeHandler)
+	c.OnCommand("cplist", createPlaylistHandler)
+	c.OnCommand("createplaylist", createPlaylistHandler)
+	c.OnCommand("deleteplaylist", deletePlaylistHandler)
+	c.OnCommand("queue", queueHandler)
+	c.OnCommand("seek", seekHandler)
+	c.OnCommand("sh", shellCommand)
+	c.OnCommand("skip", skipHandler)
+	c.OnCommand("speed", speedHandler)
+	c.OnCommand("stop", stopHandler)
+	c.OnCommand("end", stopHandler)
+	c.OnCommand("start", startHandler)
+	c.OnCommand("help", startHandler)
+	c.OnCommand("ping", pingHandler)
+	c.OnCommand("play", playHandler)
+	c.OnCommand("p", playHandler)
+	c.OnCommand("vplay", vPlayHandler)
+	c.OnCommand("v", vPlayHandler)
+	c.OnCommand("remove", removeHandler)
+	c.OnCommand("mute", muteHandler)
+	c.OnCommand("unmute", unmuteHandler)
+	c.OnCommand("settings", settingsHandler)
+	c.OnCommand("addtoplaylist", addToPlaylistHandler)
+	c.OnCommand("addtoplist", addToPlaylistHandler)
+	c.OnCommand("removefromplaylist", removeFromPlaylistHandler)
+	c.OnCommand("rmplist", removeFromPlaylistHandler)
+	c.OnCommand("plistinfo", playlistInfoHandler)
+	c.OnCommand("playlistinfo", playlistInfoHandler)
+	c.OnCommand("myplaylists", myPlaylistsHandler)
+	c.OnCommand("myplist", myPlaylistsHandler)
+	c.OnCommand("stats", statsHandler)
 
-	d.AddHandler(handlers.NewUpdateChatMember(nil, handleParticipant))
-	d.AddHandler(handlers.NewUpdateNewMessage(nil, handleVoiceChatMessage))
+	c.OnCommand("set_logger_id", setLoggerIdHandler)
+	c.OnCommand("set_support_group", setSupportGroupHandler)
+	c.OnCommand("set_support_channel", setSupportChannelHandler)
+	c.OnCommand("set_song_duration", setSongDurationHandler)
+	c.OnCommand("set_default_service", setDefaultServiceHandler)
+	c.OnCommand("add_dev", addDevHandler)
+	c.OnCommand("remove_dev", removeDevHandler)
+	c.OnCommand("list_settings", listSettingsHandler)
 
-	slog.Debug("Handlers loaded successfully")
+	c.OnCommand("addacc", addaccHandler)
+	c.OnCommand("cancel", cancelAddAccHandler)
+	c.OnCommand("listacc", listAccHandler)
+	c.OnCommand("removeacc", removeAccHandler)
+
+	c.OnCallback("", func(q *tg.CallbackQuery) error {
+		data := q.DataString()
+		switch {
+		case data == "help_back":
+			return helpCallbackHandler(q)
+		case data == "vcplay_close":
+			return vcPlayHandler(q)
+		case data == "help_all" || data == "help_user" || data == "help_admin" || data == "help_owner" || data == "help_devs" || data == "help_playlist":
+			return helpCallbackHandler(q)
+		case data == "settings_main" || data == "settings_delete" || data == "settings_play" || data == "settings_admin" || data == "settings_lang":
+			return settingsCallbackHandler(q)
+		default:
+			if len(data) > 5 && data[:5] == "play_" {
+				return playCallbackHandler(q)
+			}
+			return nil
+		}
+	})
+
+	c.OnMessage("", func(m *tg.NewMessage) error {
+		if err := handleVoiceChatMessage(m); err != nil {
+			return err
+		}
+		if err := handleAddAccMessage(m); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	c.OnParticipant(handleParticipant)
 }

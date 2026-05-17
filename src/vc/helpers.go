@@ -1,11 +1,3 @@
-/*
- * TgMusicBot - Telegram Music Bot
- *  Copyright (c) 2025-2026 Ashok Shau
- *
- *  Licensed under GNU GPL v3
- *  See https://github.com/AshokShau/TgMusicBot
- */
-
 package vc
 
 import (
@@ -17,25 +9,21 @@ import (
 	"strings"
 	"time"
 
-	"ashokshau/tgmusic/src/vc/ntgcalls"
+	"musicflarebot/src/vc/ntgcalls"
 
-	td "github.com/AshokShau/gotdbot"
 	"github.com/amarnathcjd/gogram/telegram"
 )
 
 // handleFlood manages flood wait errors by pausing execution for short waits.
-// It sleeps only if the wait is <= 5 seconds. Otherwise it returns false.
 func handleFlood(err error) bool {
 	wait := telegram.GetFloodWait(err)
 	if wait <= 0 {
 		return false
 	}
-
 	if wait > 5 {
 		logger.Warn("Flood wait too long, skipping sleep", "seconds", wait)
 		return false
 	}
-
 	logger.Warn("Flood wait detected, sleeping", "seconds", wait)
 	time.Sleep(time.Duration(wait+1) * time.Second)
 	return true
@@ -55,7 +43,6 @@ func getVideoDimensions(filePath string) (int, int) {
 		logger.Warn("[getVideoDimensions] Invalid video dimensions(%s): %s", filePath, string(out))
 		return 0, 0
 	}
-
 	width, _ := strconv.Atoi(dimensions[0])
 	height, _ := strconv.Atoi(dimensions[1])
 	return width, height
@@ -173,7 +160,7 @@ func getMediaDescription(filePath string, isVideo bool, ffmpegParameters string)
 }
 
 // UpdateMembership updates the membership status of a user in a specific chat.
-func (c *TelegramCalls) UpdateMembership(chatId, userId int64, status td.ChatMemberStatus) {
+func (c *TelegramCalls) UpdateMembership(chatId, userId int64, status string) {
 	cacheKey := fmt.Sprintf("%d:%d", chatId, userId)
 	if c.statusCache != nil {
 		c.statusCache.Set(cacheKey, status)

@@ -1,74 +1,38 @@
-/*
- * TgMusicBot - Telegram Music Bot
- *  Copyright (c) 2025-2026 Ashok Shau
- *
- *  Licensed under GNU GPL v3
- *  See https://github.com/AshokShau/TgMusicBot
- */
-
 package core
 
 import (
-	"ashokshau/tgmusic/config"
-	"ashokshau/tgmusic/src/utils"
+	"musicflarebot/config"
+	"musicflarebot/src/utils"
 	"fmt"
 
-	"github.com/AshokShau/gotdbot"
+	tg "github.com/amarnathcjd/gogram/telegram"
 )
 
-func cb(text, data string) gotdbot.InlineKeyboardButton {
-	return gotdbot.InlineKeyboardButton{
-		Text: text,
-		Type: &gotdbot.InlineKeyboardButtonTypeCallback{
-			Data: []byte(data),
-		},
-	}
+var CloseBtn = tg.Button.Data("Close", "vcplay_close")
+var HomeBtn = tg.Button.Data("Home", "help_back")
+var HelpBtn = tg.Button.Data("Help", "help_all")
+var UserBtn = tg.Button.Data("Users", "help_user")
+var AdminBtn = tg.Button.Data("Admins", "help_admin")
+var OwnerBtn = tg.Button.Data("Owner", "help_owner")
+var DevsBtn = tg.Button.Data("Devs", "help_devs")
+var PlaylistBtn = tg.Button.Data("Playlist", "help_playlist")
+
+var SourceCodeBtn = tg.Button.URL("Source Code", "https://github.com/FlareBase/MusicFlareBot")
+
+func SupportKeyboard() *tg.ReplyInlineMarkup {
+	channelBtn := tg.Button.URL("Updates", config.Conf.SupportChannel)
+	groupBtn := tg.Button.URL("Group", config.Conf.SupportGroup)
+
+	return tg.NewKeyboard().AddRow(channelBtn, groupBtn).AddRow(CloseBtn).Build()
 }
 
-func url(text, link string) gotdbot.InlineKeyboardButton {
-	return gotdbot.InlineKeyboardButton{
-		Text: text,
-		Type: &gotdbot.InlineKeyboardButtonTypeUrl{
-			Url: link,
-		},
-	}
+func SupportBtn() *tg.ReplyInlineMarkup {
+	channelBtn := tg.Button.URL("Updates", config.Conf.SupportChannel)
+	groupBtn := tg.Button.URL("Group", config.Conf.SupportGroup)
+	return tg.NewKeyboard().AddRow(channelBtn, groupBtn).Build()
 }
 
-var CloseBtn = cb("Close", "vcplay_close")
-var HomeBtn = cb("Home", "help_back")
-var HelpBtn = cb("Help", "help_all")
-var UserBtn = cb("Users", "help_user")
-var AdminBtn = cb("Admins", "help_admin")
-var OwnerBtn = cb("Owner", "help_owner")
-var DevsBtn = cb("Devs", "help_devs")
-var PlaylistBtn = cb("Playlist", "help_playlist")
-
-var SourceCodeBtn = url("Source Code", "https://github.com/AshokShau/TgMusicBot")
-
-func SupportKeyboard() *gotdbot.ReplyMarkupInlineKeyboard {
-
-	channelBtn := url("Updates", config.Conf.SupportChannel)
-	groupBtn := url("Group", config.Conf.SupportGroup)
-
-	return &gotdbot.ReplyMarkupInlineKeyboard{
-		Rows: [][]gotdbot.InlineKeyboardButton{
-			{channelBtn, groupBtn},
-			{CloseBtn},
-		},
-	}
-}
-
-func SupportBtn() *gotdbot.ReplyMarkupInlineKeyboard {
-	channelBtn := url("Updates", config.Conf.SupportChannel)
-	groupBtn := url("Group", config.Conf.SupportGroup)
-	return &gotdbot.ReplyMarkupInlineKeyboard{
-		Rows: [][]gotdbot.InlineKeyboardButton{
-			{channelBtn, groupBtn},
-		},
-	}
-}
-
-func SettingsKeyboard(playMode, adminMode string, cmdDelete bool, language string) *gotdbot.ReplyMarkupInlineKeyboard {
+func SettingsKeyboard(playMode, adminMode string, cmdDelete bool, language string) *tg.ReplyInlineMarkup {
 	playText := "Everyone"
 	if playMode == utils.Admins {
 		playText = "Admins"
@@ -89,127 +53,85 @@ func SettingsKeyboard(playMode, adminMode string, cmdDelete bool, language strin
 		langText = language
 	}
 
-	return &gotdbot.ReplyMarkupInlineKeyboard{
-		Rows: [][]gotdbot.InlineKeyboardButton{
-			{
-				cb("Play Mode ➜", "settings_main"),
-				cb(playText, "settings_play"),
-			},
-			{
-				cb("Command Delete ➜", "settings_main"),
-				cb(deleteText, "settings_delete"),
-			},
-			{
-				cb("Admin Mode ➜", "settings_main"),
-				cb(adminText, "settings_admin"),
-			},
-			{
-				cb("Language ➜", "settings_main"),
-				cb(langText, "settings_lang"),
-			},
-			{CloseBtn},
-		},
-	}
+	return tg.NewKeyboard().
+		AddRow(tg.Button.Data("Play Mode ➜", "settings_main"), tg.Button.Data(playText, "settings_play")).
+		AddRow(tg.Button.Data("Command Delete ➜", "settings_main"), tg.Button.Data(deleteText, "settings_delete")).
+		AddRow(tg.Button.Data("Admin Mode ➜", "settings_main"), tg.Button.Data(adminText, "settings_admin")).
+		AddRow(tg.Button.Data("Language ➜", "settings_main"), tg.Button.Data(langText, "settings_lang")).
+		AddRow(CloseBtn).
+		Build()
 }
 
-func HelpMenuKeyboard() *gotdbot.ReplyMarkupInlineKeyboard {
-
-	return &gotdbot.ReplyMarkupInlineKeyboard{
-		Rows: [][]gotdbot.InlineKeyboardButton{
-			{UserBtn, AdminBtn, OwnerBtn},
-			{PlaylistBtn, DevsBtn, CloseBtn},
-			{HomeBtn},
-		},
-	}
+func HelpMenuKeyboard() *tg.ReplyInlineMarkup {
+	return tg.NewKeyboard().
+		AddRow(UserBtn, AdminBtn, OwnerBtn).
+		AddRow(PlaylistBtn, DevsBtn, CloseBtn).
+		AddRow(HomeBtn).
+		Build()
 }
 
-func BackHelpMenuKeyboard() *gotdbot.ReplyMarkupInlineKeyboard {
-
-	return &gotdbot.ReplyMarkupInlineKeyboard{
-		Rows: [][]gotdbot.InlineKeyboardButton{
-			{HelpBtn, HomeBtn},
-			{CloseBtn, SourceCodeBtn},
-		},
-	}
+func BackHelpMenuKeyboard() *tg.ReplyInlineMarkup {
+	return tg.NewKeyboard().
+		AddRow(HelpBtn, HomeBtn).
+		AddRow(CloseBtn, SourceCodeBtn).
+		Build()
 }
 
-func ControlButtons(mode string) *gotdbot.ReplyMarkupInlineKeyboard {
-
-	skipBtn := cb("‣‣I", "play_skip")
-	stopBtn := cb("▢", "play_stop")
-	pauseBtn := cb("II", "play_pause")
-	resumeBtn := cb("▷", "play_resume")
-	muteBtn := cb("🔇", "play_mute")
-	unmuteBtn := cb("🔊", "play_unmute")
-	addToPlaylistBtn := cb("➕", "play_add_to_list")
+func ControlButtons(mode string) *tg.ReplyInlineMarkup {
+	skipBtn := tg.Button.Data("‣‣I", "play_skip")
+	stopBtn := tg.Button.Data("▢", "play_stop")
+	pauseBtn := tg.Button.Data("II", "play_pause")
+	resumeBtn := tg.Button.Data("▷", "play_resume")
+	muteBtn := tg.Button.Data("🔇", "play_mute")
+	unmuteBtn := tg.Button.Data("🔊", "play_unmute")
+	addToPlaylistBtn := tg.Button.Data("➕", "play_add_to_list")
 
 	switch mode {
-
 	case "play":
-		return &gotdbot.ReplyMarkupInlineKeyboard{
-			Rows: [][]gotdbot.InlineKeyboardButton{
-				{skipBtn, stopBtn, pauseBtn},
-				{addToPlaylistBtn, CloseBtn},
-			},
-		}
-
+		return tg.NewKeyboard().
+			AddRow(skipBtn, stopBtn, pauseBtn).
+			AddRow(addToPlaylistBtn, CloseBtn).
+			Build()
 	case "pause":
-		return &gotdbot.ReplyMarkupInlineKeyboard{
-			Rows: [][]gotdbot.InlineKeyboardButton{
-				{skipBtn, stopBtn, resumeBtn},
-				{CloseBtn},
-			},
-		}
-
+		return tg.NewKeyboard().
+			AddRow(skipBtn, stopBtn, resumeBtn).
+			AddRow(CloseBtn).
+			Build()
 	case "resume":
-		return &gotdbot.ReplyMarkupInlineKeyboard{
-			Rows: [][]gotdbot.InlineKeyboardButton{
-				{skipBtn, stopBtn, pauseBtn},
-				{CloseBtn},
-			},
-		}
-
+		return tg.NewKeyboard().
+			AddRow(skipBtn, stopBtn, pauseBtn).
+			AddRow(CloseBtn).
+			Build()
 	case "mute":
-		return &gotdbot.ReplyMarkupInlineKeyboard{
-			Rows: [][]gotdbot.InlineKeyboardButton{
-				{skipBtn, stopBtn, unmuteBtn},
-				{CloseBtn},
-			},
-		}
-
+		return tg.NewKeyboard().
+			AddRow(skipBtn, stopBtn, unmuteBtn).
+			AddRow(CloseBtn).
+			Build()
 	case "unmute":
-		return &gotdbot.ReplyMarkupInlineKeyboard{
-			Rows: [][]gotdbot.InlineKeyboardButton{
-				{skipBtn, stopBtn, muteBtn},
-				{CloseBtn},
-			},
-		}
-
+		return tg.NewKeyboard().
+			AddRow(skipBtn, stopBtn, muteBtn).
+			AddRow(CloseBtn).
+			Build()
 	default:
-		return &gotdbot.ReplyMarkupInlineKeyboard{
-			Rows: [][]gotdbot.InlineKeyboardButton{
-				{CloseBtn},
-			},
-		}
+		return tg.NewKeyboard().
+			AddRow(CloseBtn).
+			Build()
 	}
 }
 
-func AddMeMarkup(username string) *gotdbot.ReplyMarkupInlineKeyboard {
-
-	addMeBtn := url(
+func AddMeMarkup(username string) *tg.ReplyInlineMarkup {
+	addMeBtn := tg.Button.URL(
 		"Aᴅᴅ ᴍᴇ ᴛᴏ ʏᴏᴜʀ ɢʀᴏᴜᴘ",
 		fmt.Sprintf("https://t.me/%s?startgroup=true", username),
 	)
 
-	channelBtn := url("Updates", config.Conf.SupportChannel)
-	groupBtn := url("Group", config.Conf.SupportGroup)
+	channelBtn := tg.Button.URL("Updates", config.Conf.SupportChannel)
+	groupBtn := tg.Button.URL("Group", config.Conf.SupportGroup)
 
-	return &gotdbot.ReplyMarkupInlineKeyboard{
-		Rows: [][]gotdbot.InlineKeyboardButton{
-			{addMeBtn},
-			{HelpBtn},
-			{channelBtn, groupBtn},
-			{SourceCodeBtn},
-		},
-	}
+	return tg.NewKeyboard().
+		AddRow(addMeBtn).
+		AddRow(HelpBtn).
+		AddRow(channelBtn, groupBtn).
+		AddRow(SourceCodeBtn).
+		Build()
 }

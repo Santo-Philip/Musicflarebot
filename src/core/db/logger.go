@@ -1,19 +1,5 @@
-/*
- * TgMusicBot - Telegram Music Bot
- *  Copyright (c) 2025-2026 Ashok Shau
- *
- *  Licensed under GNU GPL v3
- *  See https://github.com/AshokShau/TgMusicBot
- */
-
 package db
 
-import (
-	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
-)
-
-// GetLoggerStatus retrieves the logger status for a given bot.
 func (db *Database) GetLoggerStatus() bool {
 	if cached, ok := db.loggerCache.Get("logger"); ok {
 		return cached
@@ -22,25 +8,25 @@ func (db *Database) GetLoggerStatus() bool {
 	ctx, cancel := db.ctx()
 	defer cancel()
 
-	var doc struct {
-		Status bool `bson:"status"`
-	}
-	err := db.cacheDB.FindOne(ctx, bson.M{"_id": "logger"}).Decode(&doc)
+	var status bool
+	err := db.pool.QueryRow(ctx,
+		`SELECT COALESCE((SELECT value->>'status' FROM settings WHERE key = 'logger')::boolean, false)`,
+	).Scan(&status)
 	if err != nil {
 		return false
 	}
-	db.loggerCache.Set("logger", doc.Status)
-	return doc.Status
+
+	db.loggerCache.Set("logger", status)
+	return status
 }
 
-// SetLoggerStatus enables or disables the logger for a bot.
 func (db *Database) SetLoggerStatus(status bool) error {
 	ctx, cancel := db.ctx()
 	defer cancel()
-	_, err := db.cacheDB.UpdateOne(ctx,
-		bson.M{"_id": "logger"},
-		bson.M{"$set": bson.M{"status": status}},
-		options.UpdateOne().SetUpsert(true),
+
+	_, err := db.pool.Exec(ctx,
+		`INSERT INTO settings (key, value) VALUES ('logger', jsonb_build_object('status', $1)) ON CONFLICT (key) DO UPDATE SET value = jsonb_build_object('status', $1)`,
+		status,
 	)
 	if err == nil {
 		db.loggerCache.Set("logger", status)

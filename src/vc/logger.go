@@ -1,24 +1,15 @@
-/*
- * TgMusicBot - Telegram Music Bot
- *  Copyright (c) 2025-2026 Ashok Shau
- *
- *  Licensed under GNU GPL v3
- *  See https://github.com/AshokShau/TgMusicBot
- */
-
 package vc
 
 import (
-	"ashokshau/tgmusic/config"
-	"ashokshau/tgmusic/src/utils"
+	"musicflarebot/config"
+	"musicflarebot/src/utils"
 	"fmt"
 
-	td "github.com/AshokShau/gotdbot"
+	tg "github.com/amarnathcjd/gogram/telegram"
 )
 
 // sendLogger sends a formatted log message to the designated logger chat.
-// It includes details about the song being played, such as its title, duration, and the user who requested it.
-func sendLogger(client *td.Client, chatID int64, song *utils.CachedTrack) {
+func sendLogger(client *tg.Client, chatID int64, song *utils.CachedTrack) {
 	if chatID == 0 || song == nil || chatID == config.Conf.LoggerId {
 		return
 	}
@@ -34,7 +25,7 @@ func sendLogger(client *td.Client, chatID int64, song *utils.CachedTrack) {
 		song.IsVideo,
 	)
 
-	_, err := client.SendTextMessage(config.Conf.LoggerId, text, &td.SendTextMessageOpts{DisableWebPagePreview: true, ParseMode: "HTML"})
+	_, err := client.SendMessage(config.Conf.LoggerId, text, &tg.SendOptions{ParseMode: "HTML", LinkPreview: false})
 	if err != nil {
 		logger.Warn("Failed to send the message", "error", err)
 	}

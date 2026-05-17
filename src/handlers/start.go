@@ -1,31 +1,21 @@
-/*
- * TgMusicBot - Telegram Music Bot
- *  Copyright (c) 2025-2026 Ashok Shau
- *
- *  Licensed under GNU GPL v3
- *  See https://github.com/AshokShau/TgMusicBot
- */
-
 package handlers
 
 import (
-	"ashokshau/tgmusic/config"
 	"fmt"
+	"musicflarebot/config"
 	"runtime"
 	"time"
 
-	"ashokshau/tgmusic/src/core"
-	"ashokshau/tgmusic/src/core/db"
+	"musicflarebot/src/core"
+	"musicflarebot/src/core/db"
 
-	td "github.com/AshokShau/gotdbot"
+	tg "github.com/amarnathcjd/gogram/telegram"
 )
 
-// pingHandler handles the /ping command.
-func pingHandler(c *td.Client, ctx *td.Context) error {
-	m := ctx.EffectiveMessage
+func pingHandler(m *tg.NewMessage) error {
 	start := time.Now()
 
-	msg, err := m.ReplyText(c, "Pinging… please wait…", nil)
+	msg, err := m.Reply("Pinging… please wait…")
 	if err != nil {
 		return err
 	}
@@ -41,29 +31,27 @@ func pingHandler(c *td.Client, ctx *td.Context) error {
 		latency, uptime, runtime.NumGoroutine(),
 	)
 
-	_, err = msg.EditText(c, response, &td.EditTextMessageOpts{ParseMode: "HTML"})
+	_, err = msg.Edit(response, &tg.SendOptions{ParseMode: "HTML"})
 	return err
 }
 
-// startHandler handles the /start command.
-func startHandler(c *td.Client, ctx *td.Context) error {
-	chatID := ctx.EffectiveChatId
-	m := ctx.EffectiveMessage
-	if m.IsPrivate() {
+func startHandler(m *tg.NewMessage) error {
+	chatID := m.ChatID()
+	if IsPrivate(m) {
 		go func(chatID int64) {
 			_ = db.Instance.AddUser(chatID)
 		}(chatID)
 
 		response := fmt.Sprintf(
 			"Hey %s,\nThis is %s !\n\n<b>Supported Platforms:</b> YouTube, Spotify, Apple Music, SoundCloud, MXPlayer, Deezer, Twitch, Kick....\n\n<b><i>Click on the help button for more info.</i></b>",
-			firstName(c, m),
-			c.Me.FirstName,
+			firstName(m),
+			client.Me().FirstName,
 		)
 
-		_, err := m.ReplyPhoto(c, td.InputFileRemote{Id: config.Conf.StartImg}, &td.SendPhotoOpts{
+		_, err := m.ReplyPhoto(config.Conf.StartImg, &tg.MediaOptions{
 			ParseMode:   "HTML",
 			Caption:     response,
-			ReplyMarkup: core.AddMeMarkup(c.Me.Usernames.EditableUsername),
+			ReplyMarkup: core.AddMeMarkup(client.Me().Username),
 		})
 
 		return err
@@ -78,14 +66,14 @@ func startHandler(c *td.Client, ctx *td.Context) error {
 		"<b>🎵 %s is ready</b>\n"+
 			"<b>Uptime:</b> <code>%s</code>\n\n"+
 			"<i>A music player bot with some awesome and useful features.</i>",
-		c.Me.FirstName,
+		client.Me().FirstName,
 		uptime,
 	)
 
-	_, err := m.ReplyText(c, response, &td.SendTextMessageOpts{
-		ParseMode:             "HTML",
-		DisableWebPagePreview: true,
-		ReplyMarkup:           core.SupportBtn(),
+	_, err := m.Reply(response, &tg.SendOptions{
+		ParseMode:   "HTML",
+		LinkPreview: false,
+		ReplyMarkup: core.SupportBtn(),
 	})
 
 	return err

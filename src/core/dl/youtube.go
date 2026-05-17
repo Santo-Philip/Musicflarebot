@@ -1,18 +1,10 @@
-/*
- * TgMusicBot - Telegram Music Bot
- *  Copyright (c) 2025-2026 Ashok Shau
- *
- *  Licensed under GNU GPL v3
- *  See https://github.com/AshokShau/TgMusicBot
- */
-
 package dl
 
 import (
 	"time"
 
-	"ashokshau/tgmusic/config"
-	"ashokshau/tgmusic/src/utils"
+	"musicflarebot/config"
+	"musicflarebot/src/utils"
 	"context"
 	"crypto/rand"
 	"errors"
