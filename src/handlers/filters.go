@@ -49,7 +49,7 @@ func adminMode(m *tg.NewMessage) bool {
 
 	chatID := m.ChatID()
 
-	if IsSuperGroup(m) || IsRegularGroup(m) {
+	if IsSuperGroup(m) {
 		if !checkBotAdmin(m) {
 			return false
 		}
@@ -120,16 +120,21 @@ func checkBotAdminCB(q *tg.CallbackQuery) bool {
 }
 
 func playMode(m *tg.NewMessage) bool {
-	if IsPrivate(m) {
-		// Private chats lack a voice chat context; inform the user.
-		_, _ = m.Reply("Playback commands work only in group voice chats.")
-		return false
-	}
-	// Allow play command in groups; admin checks apply only for supergroups.
 	chatID := m.ChatID()
 
-	if IsSuperGroup(m) || IsRegularGroup(m) {
-		if !checkBotAdmin(m) {
+	// Resolve the peer type to reliably detect private chat vs any group.
+	// Basic groups can return positive ChatID() (same as private chats), so we
+	// cannot rely on numeric sign alone. Using GetInputPeer avoids that ambiguity.
+	peer, err := client.GetInputPeer(chatID)
+	if err == nil {
+		if _, ok := peer.(*tg.InputPeerUser); ok {
+			_, _ = m.Reply("Playback commands work only in group voice chats.")
+			return false
+		}
+	} else {
+		// Fallback: if GetInputPeer fails, check via ChatID vs SenderID.
+		if m.ChatID() > 0 && m.SenderID() == m.ChatID() {
+			_, _ = m.Reply("Playback commands work only in group voice chats.")
 			return false
 		}
 	}
