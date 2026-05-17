@@ -161,14 +161,18 @@ func (c *TelegramCalls) resolveInviteLink(chatID int64, cacheKey string) (string
 	}
 
 	invite, err := c.bot.GetChatInviteLink(chatID, &tg.InviteLinkOptions{
-		CreatesJoinRequest: false,
-		Title:              "MusicFlareBot assistant",
+		RequestNeeded: false,
+		Title:         "MusicFlareBot assistant",
 	})
 	if err != nil {
 		return "", fmt.Errorf("create invite link for chat %d: %w", chatID, err)
 	}
 
-	link := invite.GetLink()
+	exported, ok := invite.(*tg.ChatInviteExported)
+	if !ok {
+		return "", errors.New("unexpected invite link type")
+	}
+	link := exported.Link
 	if link == "" {
 		return "", errors.New("telegram returned an empty invite link")
 	}
