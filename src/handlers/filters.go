@@ -22,7 +22,6 @@ func checkBotAdmin(m *tg.NewMessage) bool {
 		if strings.Contains(err.Error(), "is not an admin in chat") {
 			_, _ = m.Reply("Bot is not an administrator in this chat. Please promote the bot with invite users permission.")
 		} else {
-			slog.Warn("GetUserAdmin error", "error", err)
 			_, _ = m.Reply("Unable to verify bot administrator status.")
 		}
 		return false
@@ -50,7 +49,7 @@ func adminMode(m *tg.NewMessage) bool {
 
 	chatID := m.ChatID()
 
-	if !checkBotAdmin(m) {
+	if chatID < 0 && !checkBotAdmin(m) {
 		return false
 	}
 
@@ -73,7 +72,7 @@ func adminMode(m *tg.NewMessage) bool {
 func adminModeCB(q *tg.CallbackQuery) bool {
 	chatID := q.ChatID
 
-	if !checkBotAdminCB(q) {
+	if chatID < 0 && !checkBotAdminCB(q) {
 		return false
 	}
 
@@ -121,7 +120,7 @@ func playMode(m *tg.NewMessage) bool {
 
 	chatID := m.ChatID()
 
-	if !checkBotAdmin(m) {
+	if chatID < 0 && !checkBotAdmin(m) {
 		return false
 	}
 
