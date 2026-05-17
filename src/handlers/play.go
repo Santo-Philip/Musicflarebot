@@ -18,17 +18,13 @@ import (
 )
 
 func playHandler(m *tg.NewMessage) error {
-	if !playMode(m) {
-		return nil
-	}
-	return handlePlay(m, false)
+	client.SendMessage(m.ChatID(), "/play handler reached", nil)
+	return nil
 }
 
 func vPlayHandler(m *tg.NewMessage) error {
-	if !playMode(m) {
-		return nil
-	}
-	return handlePlay(m, true)
+	client.SendMessage(m.ChatID(), "/vplay handler reached", nil)
+	return nil
 }
 
 func handlePlay(m *tg.NewMessage, isVideo bool) error {
