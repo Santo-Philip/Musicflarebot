@@ -19,7 +19,7 @@ func LoadConfig() error {
 		ApiHash:        os.Getenv("API_HASH"),
 		Token:          os.Getenv("TOKEN"),
 		SessionStrings: getSessionStrings("STRING", 10),
-		SessionType:    getEnvStr("SESSION_TYPE", "pyrogram"),
+		SessionType:    getEnvStr("SESSION_TYPE", "gogram"),
 		DatabaseUrl:    os.Getenv("DATABASE_URL"),
 		ApiUrl:         getEnvStr("API_URL", "https://beta.fallenapi.fun"),
 		ApiKey:         os.Getenv("API_KEY"),
