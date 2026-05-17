@@ -102,9 +102,10 @@ func processPhone(m *tg.NewMessage, session *accSession, phone string) error {
 	}
 
 	client, err := tg.NewClient(tg.ClientConfig{
-		AppID:     config.Conf.ApiId,
-		AppHash:   config.Conf.ApiHash,
-		ParseMode: "HTML",
+		AppID:         config.Conf.ApiId,
+		AppHash:       config.Conf.ApiHash,
+		ParseMode:     "HTML",
+		MemorySession: true,
 	})
 	if err != nil {
 		slog.Error("tg.NewClient error", "error", err)
