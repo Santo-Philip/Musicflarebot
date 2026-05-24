@@ -3,8 +3,8 @@ package handlers
 import (
 	"fmt"
 	"log/slog"
-	"musicflarebot/src/core/cache"
-	"musicflarebot/src/core/db"
+	"musicflarebot/internal/cache"
+	"musicflarebot/internal/database"
 
 	tg "github.com/amarnathcjd/gogram/telegram"
 )
@@ -20,7 +20,7 @@ func authListHandler(m *tg.NewMessage) error {
 
 	chatID := m.ChatID()
 
-	authUser := db.Instance.GetAuthUsers(chatID)
+	authUser := database.GetAuthUsers(chatID)
 	if authUser == nil || len(authUser) == 0 {
 		_, _ = m.Reply("No authorized users found.")
 		return nil
@@ -66,12 +66,12 @@ func addAuthHandler(m *tg.NewMessage) error {
 		return nil
 	}
 
-	if db.Instance.IsAuthUser(chatID, userID) {
+	if database.IsAuthUser(chatID, userID) {
 		_, _ = m.Reply("This user is already authorized.")
 		return nil
 	}
 
-	if err = db.Instance.AddAuthUser(chatID, userID); err != nil {
+	if err = database.AddAuthUser(chatID, userID); err != nil {
 		slog.Error("Failed to add authorized user", "error", err)
 		_, _ = m.Reply("Failed to authorize the user.")
 		return nil
@@ -112,12 +112,12 @@ func removeAuthHandler(m *tg.NewMessage) error {
 		return nil
 	}
 
-	if !db.Instance.IsAuthUser(chatID, userID) {
+	if !database.IsAuthUser(chatID, userID) {
 		_, _ = m.Reply("This user is not authorized.")
 		return nil
 	}
 
-	if err := db.Instance.RemoveAuthUser(chatID, userID); err != nil {
+	if err := database.RemoveAuthUser(chatID, userID); err != nil {
 		slog.Error("Failed to remove authorized user", "error", err)
 		_, _ = m.Reply("Failed to remove authorized user.")
 		return nil

@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"html"
 	"log/slog"
-	"musicflarebot/src/utils"
+	"musicflarebot/internal/utils"
 	"strings"
 
-	"musicflarebot/src/core"
-	"musicflarebot/src/core/cache"
-	"musicflarebot/src/core/db"
+	"musicflarebot/internal/ui"
+	"musicflarebot/internal/cache"
+	"musicflarebot/internal/database"
 	"musicflarebot/src/vc"
 
 	tg "github.com/amarnathcjd/gogram/telegram"
@@ -34,14 +34,14 @@ func playCallbackHandler(q *tg.CallbackQuery) error {
 	if !cache.ChatCache.IsActive(chatID) {
 		text := "There is no active playback."
 		_, _ = q.Answer(text)
-		_, _ = q.Edit(text, &tg.SendOptions{ReplyMarkup: core.ControlButtons(""), ParseMode: "HTML", LinkPreview: false})
+		_, _ = q.Edit(text, &tg.SendOptions{ReplyMarkup: ui.ControlButtons(""), ParseMode: "HTML", LinkPreview: false})
 		return nil
 	}
 
 	currentTrack := cache.ChatCache.GetPlayingTrack(chatID)
 	if currentTrack == nil {
 		_, _ = q.Answer("There is no active playback.")
-		_, _ = q.Edit("There is no active playback.", &tg.SendOptions{ReplyMarkup: core.ControlButtons(""), ParseMode: "HTML", LinkPreview: false})
+		_, _ = q.Edit("There is no active playback.", &tg.SendOptions{ReplyMarkup: ui.ControlButtons(""), ParseMode: "HTML", LinkPreview: false})
 		return nil
 	}
 
@@ -61,7 +61,7 @@ func playCallbackHandler(q *tg.CallbackQuery) error {
 	case strings.Contains(data, "play_skip"):
 		if err := vc.Calls.PlayNext(chatID); err != nil {
 			_, _ = q.Answer("Unable to skip the current track.")
-			_, _ = q.Edit("Unable to skip the current track.", &tg.SendOptions{ReplyMarkup: core.ControlButtons(""), ParseMode: "HTML", LinkPreview: false})
+			_, _ = q.Edit("Unable to skip the current track.", &tg.SendOptions{ReplyMarkup: ui.ControlButtons(""), ParseMode: "HTML", LinkPreview: false})
 			return nil
 		}
 		_, _ = q.Answer("Track skipped.")
@@ -71,61 +71,61 @@ func playCallbackHandler(q *tg.CallbackQuery) error {
 	case strings.Contains(data, "play_stop"):
 		if err := vc.Calls.Stop(chatID); err != nil {
 			_, _ = q.Answer("Unable to stop playback.")
-			_, _ = q.Edit("Unable to stop playback.", &tg.SendOptions{ReplyMarkup: core.ControlButtons(""), ParseMode: "HTML", LinkPreview: false})
+			_, _ = q.Edit("Unable to stop playback.", &tg.SendOptions{ReplyMarkup: ui.ControlButtons(""), ParseMode: "HTML", LinkPreview: false})
 			return nil
 		}
 
 		msg := fmt.Sprintf("<b>Playback stopped.</b>\nRequested by: %s", html.EscapeString(user.FirstName))
 		_, _ = q.Answer("Playback stopped.")
-		_, err := q.Edit(msg, &tg.SendOptions{ReplyMarkup: core.ControlButtons(""), ParseMode: "HTML", LinkPreview: false})
+		_, err := q.Edit(msg, &tg.SendOptions{ReplyMarkup: ui.ControlButtons(""), ParseMode: "HTML", LinkPreview: false})
 		return err
 
 	case strings.Contains(data, "play_pause"):
 		if _, err = vc.Calls.Pause(chatID); err != nil {
 			_, _ = q.Answer("Unable to pause playback.")
-			_, _ = q.Edit("Unable to pause playback.", &tg.SendOptions{ReplyMarkup: core.ControlButtons(""), ParseMode: "HTML", LinkPreview: false})
+			_, _ = q.Edit("Unable to pause playback.", &tg.SendOptions{ReplyMarkup: ui.ControlButtons(""), ParseMode: "HTML", LinkPreview: false})
 			return nil
 		}
 		_, _ = q.Answer("Playback paused.")
 		text := buildTrackMessage("Paused", "⏸") + fmt.Sprintf("\n\nPaused by %s", html.EscapeString(user.FirstName))
-		_, _ = q.Edit(text, &tg.SendOptions{ReplyMarkup: core.ControlButtons("pause"), ParseMode: "HTML", LinkPreview: false})
+		_, _ = q.Edit(text, &tg.SendOptions{ReplyMarkup: ui.ControlButtons("pause"), ParseMode: "HTML", LinkPreview: false})
 		return nil
 
 	case strings.Contains(data, "play_resume"):
 		if _, err := vc.Calls.Resume(chatID); err != nil {
 			_, _ = q.Answer("Unable to resume playback.")
-			_, _ = q.Edit("Unable to resume playback.", &tg.SendOptions{ReplyMarkup: core.ControlButtons("pause"), ParseMode: "HTML", LinkPreview: false})
+			_, _ = q.Edit("Unable to resume playback.", &tg.SendOptions{ReplyMarkup: ui.ControlButtons("pause"), ParseMode: "HTML", LinkPreview: false})
 			return nil
 		}
 		_, _ = q.Answer("Playback resumed.")
 		text := buildTrackMessage("Now Playing", "▶") + fmt.Sprintf("\n\nResumed by %s", html.EscapeString(user.FirstName))
-		_, _ = q.Edit(text, &tg.SendOptions{ReplyMarkup: core.ControlButtons("resume"), ParseMode: "HTML", LinkPreview: false})
+		_, _ = q.Edit(text, &tg.SendOptions{ReplyMarkup: ui.ControlButtons("resume"), ParseMode: "HTML", LinkPreview: false})
 		return nil
 
 	case strings.Contains(data, "play_mute"):
 		if _, err := vc.Calls.Mute(chatID); err != nil {
 			_, _ = q.Answer("Unable to mute playback.")
-			_, _ = q.Edit("Unable to mute playback.", &tg.SendOptions{ReplyMarkup: core.ControlButtons("mute"), ParseMode: "HTML", LinkPreview: false})
+			_, _ = q.Edit("Unable to mute playback.", &tg.SendOptions{ReplyMarkup: ui.ControlButtons("mute"), ParseMode: "HTML", LinkPreview: false})
 			return nil
 		}
 		_, _ = q.Answer("Playback muted.")
 		text := buildTrackMessage("Muted", "🔇") + fmt.Sprintf("\n\nMuted by %s", html.EscapeString(user.FirstName))
-		_, _ = q.Edit(text, &tg.SendOptions{ReplyMarkup: core.ControlButtons("mute"), ParseMode: "HTML", LinkPreview: false})
+		_, _ = q.Edit(text, &tg.SendOptions{ReplyMarkup: ui.ControlButtons("mute"), ParseMode: "HTML", LinkPreview: false})
 		return nil
 
 	case strings.Contains(data, "play_unmute"):
 		if _, err := vc.Calls.Unmute(chatID); err != nil {
 			_, _ = q.Answer("Unable to unmute playback.")
-			_, _ = q.Edit("Unable to unmute playback.", &tg.SendOptions{ReplyMarkup: core.ControlButtons("unmute"), ParseMode: "HTML"})
+			_, _ = q.Edit("Unable to unmute playback.", &tg.SendOptions{ReplyMarkup: ui.ControlButtons("unmute"), ParseMode: "HTML"})
 			return nil
 		}
 		_, _ = q.Answer("Playback unmuted.")
 		text := buildTrackMessage("Now Playing", "▶") + fmt.Sprintf("\n\nUnmuted by %s", html.EscapeString(user.FirstName))
-		_, _ = q.Edit(text, &tg.SendOptions{ReplyMarkup: core.ControlButtons("unmute"), LinkPreview: false})
+		_, _ = q.Edit(text, &tg.SendOptions{ReplyMarkup: ui.ControlButtons("unmute"), LinkPreview: false})
 		return nil
 
 	case strings.Contains(data, "play_add_to_list"):
-		playlists, err := db.Instance.GetUserPlaylists(q.SenderID)
+		playlists, err := database.GetUserPlaylists(q.SenderID)
 		if err != nil {
 			_, _ = q.Answer("Unable to fetch playlists.")
 			return nil
@@ -133,7 +133,7 @@ func playCallbackHandler(q *tg.CallbackQuery) error {
 
 		var playlistID string
 		if len(playlists) == 0 {
-			playlistID, err = db.Instance.CreatePlaylist("My Playlist (MusicFlare)", q.SenderID)
+			playlistID, err = database.CreatePlaylist("My Playlist (MusicFlare)", q.SenderID)
 			if err != nil {
 				_, _ = q.Answer("Unable to create playlist.")
 				return nil
@@ -142,7 +142,7 @@ func playCallbackHandler(q *tg.CallbackQuery) error {
 			playlistID = playlists[0].ID
 		}
 
-		song := db.Song{
+		song := database.Song{
 			URL:      currentTrack.URL,
 			Name:     currentTrack.Name,
 			TrackID:  currentTrack.TrackID,
@@ -150,13 +150,13 @@ func playCallbackHandler(q *tg.CallbackQuery) error {
 			Platform: currentTrack.Platform,
 		}
 
-		err = db.Instance.AddSongToPlaylist(playlistID, song)
+		err = database.AddSongToPlaylist(playlistID, song)
 		if err != nil {
 			_, _ = q.Answer("Unable to add track to playlist.")
 			return nil
 		}
 
-		playlist, err := db.Instance.GetPlaylist(playlistID)
+		playlist, err := database.GetPlaylist(playlistID)
 		if err != nil {
 			_, _ = q.Answer("Playlist not found.")
 			return nil
@@ -168,7 +168,7 @@ func playCallbackHandler(q *tg.CallbackQuery) error {
 
 	_, _ = q.Answer("")
 	text := buildTrackMessage("Now Playing", "▶")
-	_, _ = q.Edit(text, &tg.SendOptions{ReplyMarkup: core.ControlButtons("resume"), ParseMode: "HTML", LinkPreview: false})
+	_, _ = q.Edit(text, &tg.SendOptions{ReplyMarkup: ui.ControlButtons("resume"), ParseMode: "HTML", LinkPreview: false})
 	return nil
 }
 

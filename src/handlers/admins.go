@@ -3,11 +3,11 @@ package handlers
 import (
 	"fmt"
 	"log/slog"
-	"musicflarebot/src/utils"
+	"musicflarebot/internal/utils"
 	"musicflarebot/src/vc"
 	"time"
 
-	"musicflarebot/src/core/cache"
+	"musicflarebot/internal/cache"
 
 	tg "github.com/amarnathcjd/gogram/telegram"
 )

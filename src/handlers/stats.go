@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"musicflarebot/src/core/db"
+	"musicflarebot/internal/database"
 
 	tg "github.com/amarnathcjd/gogram/telegram"
 	"github.com/shirou/gopsutil/v3/cpu"
@@ -179,8 +179,8 @@ func statsHandler(m *tg.NewMessage) error {
 
 	stats := gatherAppStats()
 
-	chats, _ := db.Instance.GetAllChats()
-	users, _ := db.Instance.GetAllUsers()
+	chats, _ := database.GetAllChats()
+	users, _ := database.GetAllUsers()
 	ntgCpuUsage, _ := vc.Calls.CpuUsage(chatID)
 
 	memLine := fmt.Sprintf("• Ram usage: %s\n", stats.AppMemUsed)

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"musicflarebot/src/core/cache"
+	"musicflarebot/internal/cache"
 
 	tg "github.com/amarnathcjd/gogram/telegram"
 )

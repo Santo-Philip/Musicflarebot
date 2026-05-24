@@ -1,9 +1,10 @@
 package dl
 
 import (
-	"musicflarebot/config"
-	"musicflarebot/src/core/db"
-	"musicflarebot/src/utils"
+	"musicflarebot/internal/config"
+	"musicflarebot/internal/database"
+	"musicflarebot/internal/types"
+	"musicflarebot/internal/utils"
 	"fmt"
 	"strconv"
 	"strings"
@@ -11,16 +12,16 @@ import (
 	tg "github.com/amarnathcjd/gogram/telegram"
 )
 
-func DownloadCachedTrack(cached *utils.CachedTrack, bot *tg.Client) (string, error) {
-	if cached.Platform == utils.DirectLink {
+func DownloadCachedTrack(cached *types.CachedTrack, bot *tg.Client) (string, error) {
+	if cached.Platform == types.DirectLink {
 		return cached.URL, nil
 	}
 
-	if cached.Platform == utils.Telegram {
+	if cached.Platform == types.Telegram {
 		return downloadTelegramFile(cached, bot)
 	}
 
-	if cached.Platform == utils.YouTube && cached.TrackID != "" {
+	if cached.Platform == types.YouTube && cached.TrackID != "" {
 		path, err := checkSongCache(cached.TrackID, bot)
 		if err == nil && path != "" {
 			return path, nil
@@ -32,14 +33,14 @@ func DownloadCachedTrack(cached *utils.CachedTrack, bot *tg.Client) (string, err
 		return "", err
 	}
 
-	if !cached.IsVideo && cached.Platform == utils.YouTube && cached.TrackID != "" {
+	if !cached.IsVideo && cached.Platform == types.YouTube && cached.TrackID != "" {
 		_ = cacheSongFile(bot, cached.TrackID, path)
 	}
 
 	return path, nil
 }
 
-func downloadViaWrapper(cached *utils.CachedTrack, bot *tg.Client) (string, error) {
+func downloadViaWrapper(cached *types.CachedTrack, bot *tg.Client) (string, error) {
 	wrapper := NewDownloaderWrapper(cached.URL)
 	if !wrapper.IsValid() {
 		return "", fmt.Errorf("invalid cached URL: %s", cached.URL)
@@ -62,7 +63,7 @@ func downloadViaWrapper(cached *utils.CachedTrack, bot *tg.Client) (string, erro
 	return path, nil
 }
 
-func downloadTelegramFile(cached *utils.CachedTrack, bot *tg.Client) (string, error) {
+func downloadTelegramFile(cached *types.CachedTrack, bot *tg.Client) (string, error) {
 	// For Telegram platform, TrackID is a file ID. Use gogram's DownloadMedia.
 	// Since we don't have a message object, we create one by sending a dummy request
 	// or using raw API. For now, use GetMessageByID approach.
@@ -97,7 +98,7 @@ func checkSongCache(trackID string, bot *tg.Client) (string, error) {
 		return "", nil
 	}
 
-	val, err := db.Instance.GetSetting("song_cache_" + trackID)
+	val, err := database.GetSetting("song_cache_" + trackID)
 	if err != nil || val == "" {
 		return "", nil
 	}
@@ -133,8 +134,8 @@ func cacheSongFile(bot *tg.Client, trackID, filePath string) error {
 	if chatID < 0 {
 		s := strconv.FormatInt(-chatID, 10)
 		chatStr := strings.TrimPrefix(s, "100")
-		return db.Instance.SetSetting("song_cache_"+trackID, chatStr+":"+strconv.Itoa(int(msg.ID)))
+		return database.SetSetting("song_cache_"+trackID, chatStr+":"+strconv.Itoa(int(msg.ID)))
 	}
 
-	return db.Instance.SetSetting("song_cache_"+trackID, strconv.FormatInt(chatID, 10)+":"+strconv.Itoa(int(msg.ID)))
+	return database.SetSetting("song_cache_"+trackID, strconv.FormatInt(chatID, 10)+":"+strconv.Itoa(int(msg.ID)))
 }

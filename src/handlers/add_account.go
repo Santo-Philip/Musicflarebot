@@ -3,8 +3,8 @@ package handlers
 import (
 	"fmt"
 	"log/slog"
-	"musicflarebot/config"
-	"musicflarebot/src/core/db"
+	"musicflarebot/internal/config"
+	"musicflarebot/internal/database"
 	"musicflarebot/src/vc"
 	"strconv"
 	"strings"
@@ -225,7 +225,7 @@ func finalizeAccount(m *tg.NewMessage, session *accSession) error {
 
 	key := fmt.Sprintf("session_db_%d", time.Now().UnixNano())
 
-	if err := db.Instance.SetSetting(key, sessionStr); err != nil {
+	if err := database.SetSetting(key, sessionStr); err != nil {
 		slog.Error("Failed to save session string", "error", err)
 		_, _ = m.Reply(fmt.Sprintf("Failed to save session string: %s", err.Error()))
 
@@ -334,9 +334,9 @@ func removeAccHandler(m *tg.NewMessage) error {
 
 	_ = vc.Calls.StopClient(removed)
 
-	_ = db.Instance.DeleteAllSessionKeys()
+	_ = database.DeleteAllSessionKeys()
 	for i, s := range config.Conf.SessionStrings {
-		_ = db.Instance.SetSetting(fmt.Sprintf("session_db_%d", time.Now().UnixNano()+int64(i)), s)
+		_ = database.SetSetting(fmt.Sprintf("session_db_%d", time.Now().UnixNano()+int64(i)), s)
 	}
 
 	_, _ = m.Reply(fmt.Sprintf("Account <b>%d</b> has been removed.", index))

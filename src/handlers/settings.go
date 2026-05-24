@@ -3,12 +3,13 @@ package handlers
 import (
 	"fmt"
 	"log/slog"
-	"musicflarebot/src/utils"
+	"musicflarebot/internal/types"
+	"musicflarebot/internal/utils"
 	"strings"
 
-	"musicflarebot/src/core"
-	"musicflarebot/src/core/cache"
-	"musicflarebot/src/core/db"
+	"musicflarebot/internal/ui"
+	"musicflarebot/internal/cache"
+	"musicflarebot/internal/database"
 
 	tg "github.com/amarnathcjd/gogram/telegram"
 )
@@ -36,14 +37,14 @@ func settingsHandler(m *tg.NewMessage) error {
 		return nil
 	}
 
-	getPlayMode := db.Instance.GetPlayMode(chatID)
-	playModeStr := utils.Everyone
+	getPlayMode := database.GetPlayMode(chatID)
+	playModeStr := types.Everyone
 	if getPlayMode {
-		playModeStr = utils.Admins
+		playModeStr = types.Admins
 	}
-	getAdminMode := db.Instance.GetAdminMode(chatID)
-	cmdDelete := db.Instance.GetCmdDelete(chatID)
-	language, _ := db.Instance.GetLanguage(chatID)
+	getAdminMode := database.GetAdminMode(chatID)
+	cmdDelete := database.GetCmdDelete(chatID)
+	language, _ := database.GetLanguage(chatID)
 
 	chat, err := client.GetChat(chatID)
 	if err != nil {
@@ -61,7 +62,7 @@ func settingsHandler(m *tg.NewMessage) error {
 
 	_, err = m.Reply(text, &tg.SendOptions{
 		ParseMode:   "HTML",
-		ReplyMarkup: core.SettingsKeyboard(playModeStr, getAdminMode, cmdDelete, language),
+		ReplyMarkup: ui.SettingsKeyboard(playModeStr, getAdminMode, cmdDelete, language),
 	})
 	return err
 }
@@ -104,18 +105,18 @@ func settingsCallbackHandler(q *tg.CallbackQuery) error {
 
 	switch settingType {
 	case "delete":
-		cmdDelete := db.Instance.GetCmdDelete(chatID)
-		_ = db.Instance.SetCmdDelete(chatID, !cmdDelete)
+		cmdDelete := database.GetCmdDelete(chatID)
+		_ = database.SetCmdDelete(chatID, !cmdDelete)
 	case "play":
-		getPlayMode := db.Instance.GetPlayMode(chatID)
-		_ = db.Instance.SetPlayMode(chatID, !getPlayMode)
+		getPlayMode := database.GetPlayMode(chatID)
+		_ = database.SetPlayMode(chatID, !getPlayMode)
 	case "admin":
-		getAdminMode := db.Instance.GetAdminMode(chatID)
-		newMode := utils.Everyone
-		if getAdminMode == utils.Everyone {
-			newMode = utils.Admins
+		getAdminMode := database.GetAdminMode(chatID)
+		newMode := types.Everyone
+		if getAdminMode == types.Everyone {
+			newMode = types.Admins
 		}
-		_ = db.Instance.SetAdminMode(chatID, newMode)
+		_ = database.SetAdminMode(chatID, newMode)
 	case "lang":
 		_, _ = q.Answer("Language selection is not yet implemented via this menu.", &tg.CallbackOptions{Alert: true})
 		return nil
@@ -124,14 +125,14 @@ func settingsCallbackHandler(q *tg.CallbackQuery) error {
 		return nil
 	}
 
-	getPlayMode := db.Instance.GetPlayMode(chatID)
-	playModeStr := utils.Everyone
+	getPlayMode := database.GetPlayMode(chatID)
+	playModeStr := types.Everyone
 	if getPlayMode {
-		playModeStr = utils.Admins
+		playModeStr = types.Admins
 	}
-	getAdminMode := db.Instance.GetAdminMode(chatID)
-	cmdDelete := db.Instance.GetCmdDelete(chatID)
-	language, _ := db.Instance.GetLanguage(chatID)
+	getAdminMode := database.GetAdminMode(chatID)
+	cmdDelete := database.GetCmdDelete(chatID)
+	language, _ := database.GetLanguage(chatID)
 
 	chat, err := client.GetChat(chatID)
 	if err != nil {
@@ -149,7 +150,7 @@ func settingsCallbackHandler(q *tg.CallbackQuery) error {
 
 	_, err = q.Edit(text, &tg.SendOptions{
 		ParseMode:   "HTML",
-		ReplyMarkup: core.SettingsKeyboard(playModeStr, getAdminMode, cmdDelete, language),
+		ReplyMarkup: ui.SettingsKeyboard(playModeStr, getAdminMode, cmdDelete, language),
 	})
 	if err != nil {
 		return err

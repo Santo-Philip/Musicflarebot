@@ -1,7 +1,7 @@
 package vc
 
 import (
-	"musicflarebot/config"
+	"musicflarebot/internal/config"
 	"musicflarebot/src/vc/sessions"
 	"musicflarebot/src/vc/ubot"
 	"fmt"

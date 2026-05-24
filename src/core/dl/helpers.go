@@ -1,7 +1,7 @@
 package dl
 
 import (
-	"musicflarebot/src/utils"
+	"musicflarebot/internal/types"
 	"errors"
 	"net/url"
 	"regexp"
@@ -20,11 +20,11 @@ var (
 
 // download encapsulates the information and context required for a download operation.
 type download struct {
-	Track utils.TrackInfo
+	Track types.TrackInfo
 }
 
 // newDownload creates and validates a new download instance.
-func newDownload(track utils.TrackInfo) (*download, error) {
+func newDownload(track types.TrackInfo) (*download, error) {
 	if track.CdnURL == "" {
 		return nil, errors.New("the CDN URL is missing")
 	}

@@ -2,12 +2,13 @@ package handlers
 
 import (
 	"log/slog"
-	"musicflarebot/src/utils"
+	"musicflarebot/internal/types"
+	"musicflarebot/internal/utils"
 	"slices"
 	"strings"
 
-	"musicflarebot/src/core/cache"
-	"musicflarebot/src/core/db"
+	"musicflarebot/internal/cache"
+	"musicflarebot/internal/database"
 
 	tg "github.com/amarnathcjd/gogram/telegram"
 )
@@ -56,11 +57,11 @@ func adminMode(m *tg.NewMessage) bool {
 	}
 
 	userID := m.SenderID()
-	switch db.Instance.GetAdminMode(chatID) {
-	case utils.Everyone:
+	switch database.GetAdminMode(chatID) {
+	case types.Everyone:
 		return true
-	case utils.Admins:
-		if db.Instance.IsAdmin(chatID, userID) || db.Instance.IsAuthUser(chatID, userID) {
+	case types.Admins:
+		if database.IsAdmin(chatID, userID) || database.IsAuthUser(chatID, userID) {
 			return true
 		}
 		_, _ = m.Reply("You must be an administrator to use this command.")
@@ -83,11 +84,11 @@ func adminModeCB(q *tg.CallbackQuery) bool {
 	}
 
 	userID := q.SenderID
-	switch db.Instance.GetAdminMode(chatID) {
-	case utils.Everyone:
+	switch database.GetAdminMode(chatID) {
+	case types.Everyone:
 		return true
-	case utils.Admins:
-		if db.Instance.IsAdmin(chatID, userID) || db.Instance.IsAuthUser(chatID, userID) {
+	case types.Admins:
+		if database.IsAdmin(chatID, userID) || database.IsAuthUser(chatID, userID) {
 			return true
 		}
 		_, _ = q.Answer("You must be an administrator to use this action.", &tg.CallbackOptions{Alert: true})
@@ -139,7 +140,7 @@ func playMode(m *tg.NewMessage) bool {
 		}
 	}
 
-	if db.Instance.GetPlayMode(chatID) {
+	if database.GetPlayMode(chatID) {
 		admins, err := cache.GetAdmins(client, chatID, false)
 		if err != nil {
 			return false
@@ -150,7 +151,7 @@ func playMode(m *tg.NewMessage) bool {
 			return a.User != nil && a.User.ID == senderID
 		})
 
-		if !isAdmin && !db.Instance.IsAuthUser(chatID, senderID) {
+		if !isAdmin && !database.IsAuthUser(chatID, senderID) {
 			_, _ = m.Reply("Play mode is enabled. Only administrators and authorized users can start playback.")
 			return false
 		}

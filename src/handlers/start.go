@@ -3,7 +3,7 @@ package handlers
 import (
 	"fmt"
 	"io"
-	"musicflarebot/config"
+	"musicflarebot/internal/config"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"musicflarebot/src/core"
-	"musicflarebot/src/core/db"
+	"musicflarebot/internal/ui"
+	"musicflarebot/internal/database"
 
 	tg "github.com/amarnathcjd/gogram/telegram"
 )
@@ -24,7 +24,7 @@ var (
 )
 
 func getCustomStartMedia() string {
-	customPath, err := db.Instance.GetSetting(db.SettingStartMedia)
+	customPath, err := database.GetSetting(types.SettingStartMedia)
 	if err != nil || customPath == "" {
 		return ""
 	}
@@ -35,7 +35,7 @@ func getCustomStartMedia() string {
 }
 
 func getCustomStartMessage() string {
-	msg, err := db.Instance.GetSetting(db.SettingStartMessage)
+	msg, err := database.GetSetting(types.SettingStartMessage)
 	if err != nil {
 		return ""
 	}
@@ -125,7 +125,7 @@ func startHandler(m *tg.NewMessage) error {
 	chatID := m.ChatID()
 	if IsPrivate(m) {
 		go func(chatID int64) {
-			_ = db.Instance.AddUser(chatID)
+			_ = database.AddUser(chatID)
 		}(chatID)
 
 		customMsg := getCustomStartMessage()
@@ -151,13 +151,13 @@ func startHandler(m *tg.NewMessage) error {
 			_, err = m.Reply(response, &tg.SendOptions{
 				ParseMode:   "HTML",
 				LinkPreview: false,
-				ReplyMarkup: core.AddMeMarkup(client.Me().Username),
+				ReplyMarkup: ui.AddMeMarkup(client.Me().Username),
 			})
 		} else {
 			_, err = m.ReplyMedia(media, &tg.MediaOptions{
 				ParseMode:   "HTML",
 				Caption:     response,
-				ReplyMarkup: core.AddMeMarkup(client.Me().Username),
+				ReplyMarkup: ui.AddMeMarkup(client.Me().Username),
 			})
 		}
 
@@ -165,7 +165,7 @@ func startHandler(m *tg.NewMessage) error {
 	} else if IsSuperGroup(m) {
 		// Handle supergroup
 		go func(chatID int64) {
-			_ = db.Instance.AddChat(chatID)
+			_ = database.AddChat(chatID)
 		}(chatID)
 
 		uptime := getFormattedDuration(time.Since(startTime))
@@ -180,14 +180,14 @@ func startHandler(m *tg.NewMessage) error {
 		_, err := m.Reply(response, &tg.SendOptions{
 			ParseMode:   "HTML",
 			LinkPreview: false,
-			ReplyMarkup: core.SupportBtn(),
+			ReplyMarkup: ui.SupportBtn(),
 		})
 
 		return err
 	} else if IsRegularGroup(m) {
 		// Handle regular group
 		go func(chatID int64) {
-			_ = db.Instance.AddChat(chatID)
+			_ = database.AddChat(chatID)
 		}(chatID)
 
 		uptime := getFormattedDuration(time.Since(startTime))
@@ -202,7 +202,7 @@ func startHandler(m *tg.NewMessage) error {
 		_, err := m.Reply(response, &tg.SendOptions{
 			ParseMode:   "HTML",
 			LinkPreview: false,
-			ReplyMarkup: core.SupportBtn(),
+			ReplyMarkup: ui.SupportBtn(),
 		})
 
 		return err
@@ -210,7 +210,7 @@ func startHandler(m *tg.NewMessage) error {
 
 	// Fallback for any other chat type
 	go func(chatID int64) {
-		_ = db.Instance.AddChat(chatID)
+		_ = database.AddChat(chatID)
 	}(chatID)
 
 	uptime := getFormattedDuration(time.Since(startTime))
@@ -225,7 +225,7 @@ func startHandler(m *tg.NewMessage) error {
 	_, err := m.Reply(response, &tg.SendOptions{
 		ParseMode:   "HTML",
 		LinkPreview: false,
-		ReplyMarkup: core.SupportBtn(),
+		ReplyMarkup: ui.SupportBtn(),
 	})
 
 	return err

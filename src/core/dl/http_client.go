@@ -1,7 +1,7 @@
 package dl
 
 import (
-	"musicflarebot/config"
+	"musicflarebot/internal/config"
 	"context"
 	"crypto/rand"
 	"crypto/tls"

@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"musicflarebot/src/core/cache"
+	"musicflarebot/internal/cache"
 	"musicflarebot/src/vc/ubot"
 
 	tg "github.com/amarnathcjd/gogram/telegram"

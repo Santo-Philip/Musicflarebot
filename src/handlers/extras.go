@@ -3,7 +3,7 @@ package handlers
 import (
 	"errors"
 	"fmt"
-	"musicflarebot/config"
+	"musicflarebot/internal/config"
 	"strconv"
 	"strings"
 	"time"

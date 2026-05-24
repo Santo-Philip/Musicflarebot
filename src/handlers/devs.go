@@ -2,11 +2,11 @@ package handlers
 
 import (
 	"fmt"
-	"musicflarebot/config"
+	"musicflarebot/internal/config"
 	"strings"
 
-	"musicflarebot/src/core/cache"
-	"musicflarebot/src/core/db"
+	"musicflarebot/internal/cache"
+	"musicflarebot/internal/database"
 	"musicflarebot/src/vc"
 
 	tg "github.com/amarnathcjd/gogram/telegram"
@@ -68,7 +68,7 @@ func clearAssistantsHandler(m *tg.NewMessage) error {
 		return nil
 	}
 
-	done, err := db.Instance.ClearAllAssistants()
+	done, err := database.ClearAllAssistants()
 	if err != nil {
 		_, _ = m.Reply(fmt.Sprintf("failed to clear assistants: %s", err.Error()))
 		return nil
@@ -108,7 +108,7 @@ func loggerHandler(m *tg.NewMessage) error {
 		return nil
 	}
 
-	loggerStatus := db.Instance.GetLoggerStatus()
+	loggerStatus := database.GetLoggerStatus()
 	args := strings.ToLower(Args(m))
 	if len(args) == 0 {
 		_, _ = m.Reply(fmt.Sprintf("Usage: /logger [enable|disable|on|off]\nCurrent status: %t", loggerStatus))
@@ -117,10 +117,10 @@ func loggerHandler(m *tg.NewMessage) error {
 
 	switch args {
 	case "enable", "on":
-		_ = db.Instance.SetLoggerStatus(true)
+		_ = database.SetLoggerStatus(true)
 		_, _ = m.Reply("Logger Enabled")
 	case "disable", "off":
-		_ = db.Instance.SetLoggerStatus(false)
+		_ = database.SetLoggerStatus(false)
 		_, _ = m.Reply("Logger disabled")
 	default:
 		_, _ = m.Reply("Invalid argument. Use 'enable', 'disable', 'on', or 'off'.")

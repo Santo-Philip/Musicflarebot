@@ -1,15 +1,16 @@
 package vc
 
 import (
-	"musicflarebot/config"
-	"musicflarebot/src/utils"
+	"musicflarebot/internal/config"
+	"musicflarebot/internal/types"
+	"musicflarebot/internal/utils"
 	"fmt"
 
 	tg "github.com/amarnathcjd/gogram/telegram"
 )
 
 // sendLogger sends a formatted log message to the designated logger chat.
-func sendLogger(client *tg.Client, chatID int64, song *utils.CachedTrack) {
+func sendLogger(client *tg.Client, chatID int64, song *types.CachedTrack) {
 	if chatID == 0 || song == nil || chatID == config.Conf.LoggerId {
 		return
 	}

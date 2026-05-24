@@ -3,9 +3,9 @@ package handlers
 import (
 	"fmt"
 	"log/slog"
-	"musicflarebot/config"
-	"musicflarebot/src/core/cache"
-	"musicflarebot/src/core/db"
+	"musicflarebot/internal/config"
+	"musicflarebot/internal/cache"
+	"musicflarebot/internal/database"
 	"musicflarebot/src/vc"
 	"strconv"
 	"strings"
@@ -102,7 +102,7 @@ func isAdminStatus(status string) bool {
 func storeChatReference(chatID int64) {
 	slog.Debug("Storing chat reference for chat", "chat_id", chatID)
 
-	if err := db.Instance.AddChat(chatID); err != nil {
+	if err := database.AddChat(chatID); err != nil {
 		slog.Error("Failed to add chat to database", "chat_id", chatID, "error", err)
 	}
 }

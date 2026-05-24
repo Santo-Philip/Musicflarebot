@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"musicflarebot/src/core/db"
+	"musicflarebot/internal/database"
 	"musicflarebot/src/core/dl"
 
 	tg "github.com/amarnathcjd/gogram/telegram"
@@ -20,7 +20,7 @@ func createPlaylistHandler(m *tg.NewMessage) error {
 		return err
 	}
 
-	userPlaylists, err := db.Instance.GetUserPlaylists(userID)
+	userPlaylists, err := database.GetUserPlaylists(userID)
 	if err != nil {
 		_, err = m.Reply("Unable to fetch your playlists. Please try again later.")
 		return err
@@ -35,7 +35,7 @@ func createPlaylistHandler(m *tg.NewMessage) error {
 		args = string([]rune(args)[:40])
 	}
 
-	playlistID, err := db.Instance.CreatePlaylist(args, userID)
+	playlistID, err := database.CreatePlaylist(args, userID)
 	if err != nil {
 		_, err = m.Reply(fmt.Sprintf("Failed to create playlist: %s", err.Error()))
 		return err
@@ -65,7 +65,7 @@ func deletePlaylistHandler(m *tg.NewMessage) error {
 		return err
 	}
 
-	playlist, err := db.Instance.GetPlaylist(args)
+	playlist, err := database.GetPlaylist(args)
 	if err != nil {
 		_, err := m.Reply(
 			"The specified playlist could not be found. Please check the playlist ID.",
@@ -80,7 +80,7 @@ func deletePlaylistHandler(m *tg.NewMessage) error {
 		return err
 	}
 
-	err = db.Instance.DeletePlaylist(args, userID)
+	err = database.DeletePlaylist(args, userID)
 	if err != nil {
 		_, err := m.Reply(
 			fmt.Sprintf("Failed to delete the playlist: %s", err.Error()),
@@ -111,7 +111,7 @@ func addToPlaylistHandler(m *tg.NewMessage) error {
 	playlistID := args[0]
 	songURL := args[1]
 
-	playlist, err := db.Instance.GetPlaylist(playlistID)
+	playlist, err := database.GetPlaylist(playlistID)
 	if err != nil {
 		_, err := m.Reply(
 			"The specified playlist could not be found. Please verify the playlist ID.",
@@ -149,7 +149,7 @@ func addToPlaylistHandler(m *tg.NewMessage) error {
 		return err
 	}
 
-	song := db.Song{
+	song := database.Song{
 		URL:      trackInfo.Results[0].Url,
 		Name:     trackInfo.Results[0].Title,
 		TrackID:  trackInfo.Results[0].Id,
@@ -157,7 +157,7 @@ func addToPlaylistHandler(m *tg.NewMessage) error {
 		Platform: trackInfo.Results[0].Platform,
 	}
 
-	err = db.Instance.AddSongToPlaylist(playlistID, song)
+	err = database.AddSongToPlaylist(playlistID, song)
 	if err != nil {
 		_, err := m.Reply(
 			fmt.Sprintf("Failed to add the track to the playlist: %s", err.Error()),
@@ -192,7 +192,7 @@ func removeFromPlaylistHandler(m *tg.NewMessage) error {
 	playlistID := args[0]
 	songIdentifier := args[1]
 
-	playlist, err := db.Instance.GetPlaylist(playlistID)
+	playlist, err := database.GetPlaylist(playlistID)
 	if err != nil {
 		_, err = m.Reply("Playlist not found.")
 		return err
@@ -226,7 +226,7 @@ func removeFromPlaylistHandler(m *tg.NewMessage) error {
 		return err
 	}
 
-	err = db.Instance.RemoveSongFromPlaylist(playlistID, trackID)
+	err = database.RemoveSongFromPlaylist(playlistID, trackID)
 	if err != nil {
 		_, err = m.Reply(fmt.Sprintf("Error removing song: %s", err.Error()))
 		return err
@@ -246,7 +246,7 @@ func playlistInfoHandler(m *tg.NewMessage) error {
 		return err
 	}
 
-	playlist, err := db.Instance.GetPlaylist(args)
+	playlist, err := database.GetPlaylist(args)
 	if err != nil {
 		_, err = m.Reply("Playlist not found.")
 		return err
@@ -278,7 +278,7 @@ func playlistInfoHandler(m *tg.NewMessage) error {
 func myPlaylistsHandler(m *tg.NewMessage) error {
 	userID := m.SenderID()
 
-	playlists, err := db.Instance.GetUserPlaylists(userID)
+	playlists, err := database.GetUserPlaylists(userID)
 	if err != nil {
 		_, err := m.Reply(fmt.Sprintf("Error fetching playlists: %s", err.Error()))
 		return err

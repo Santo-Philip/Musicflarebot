@@ -1,7 +1,7 @@
 package dl
 
 import (
-	"musicflarebot/src/utils"
+	"musicflarebot/internal/types"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -79,7 +79,7 @@ func ytPost(ctx context.Context, path string, extraFields map[string]any) (map[s
 	return out, nil
 }
 
-func searchYouTube(query string, limit int) ([]utils.MusicTrack, error) {
+func searchYouTube(query string, limit int) ([]types.MusicTrack, error) {
 	payload := map[string]any{
 		"context": map[string]any{
 			"client": map[string]any{
@@ -131,12 +131,12 @@ func searchYouTube(query string, limit int) ([]utils.MusicTrack, error) {
 		"contents",
 	)
 
-	var tracks []utils.MusicTrack
+	var tracks []types.MusicTrack
 	parseResults(root, &tracks, limit)
 	return tracks, nil
 }
 
-func parseResults(node any, tracks *[]utils.MusicTrack, limit int) {
+func parseResults(node any, tracks *[]types.MusicTrack, limit int) {
 	if len(*tracks) >= limit {
 		return
 	}
@@ -161,7 +161,7 @@ func parseResults(node any, tracks *[]utils.MusicTrack, limit int) {
 			if id == "" || title == "" || durationText == "" {
 				return
 			}
-			*tracks = append(*tracks, utils.MusicTrack{
+			*tracks = append(*tracks, types.MusicTrack{
 				Id:        id,
 				Url:       ytWatchURL + id,
 				Title:     title,
@@ -169,7 +169,7 @@ func parseResults(node any, tracks *[]utils.MusicTrack, limit int) {
 				Duration:  parseDuration(durationText),
 				Views:     safeString(dig(vr, "viewCountText", "simpleText")),
 				Channel:   safeString(dig(vr, "ownerText", "runs", 0, "text")),
-				Platform:  utils.YouTube,
+				Platform:  types.YouTube,
 			})
 			return
 		}
@@ -226,33 +226,33 @@ func getYouTubeTitleFromOEmbed(videoID string) (string, error) {
 	return data.Title, nil
 }
 
-func getYouTubeVideo(ctx context.Context, videoID string) (utils.PlatformTracks, error) {
+func getYouTubeVideo(ctx context.Context, videoID string) (types.PlatformTracks, error) {
 	resp, err := ytPost(ctx, "/youtubei/v1/player", map[string]any{"videoId": videoID})
 	if err != nil {
-		return utils.PlatformTracks{}, err
+		return types.PlatformTracks{}, err
 	}
 
 	video := mapPlayerToTrack(resp)
 	if video.Id == "" {
-		return utils.PlatformTracks{}, errors.New("video not found")
+		return types.PlatformTracks{}, errors.New("video not found")
 	}
-	return utils.PlatformTracks{Results: []utils.MusicTrack{video}}, nil
+	return types.PlatformTracks{Results: []types.MusicTrack{video}}, nil
 }
 
-func getYouTubePlaylist(ctx context.Context, playlistID string) (utils.PlatformTracks, error) {
+func getYouTubePlaylist(ctx context.Context, playlistID string) (types.PlatformTracks, error) {
 	resp, err := ytPost(ctx, "/youtubei/v1/browse", map[string]any{"browseId": "VL" + playlistID})
 	if err != nil {
-		return utils.PlatformTracks{}, err
+		return types.PlatformTracks{}, err
 	}
 
 	videos := extractPlaylistVideos(resp)
 	return buildTrackList(videos, mapYTVideo), nil
 }
 
-func getYouTubeMixPlaylist(ctx context.Context, playlistID string) (utils.PlatformTracks, error) {
+func getYouTubeMixPlaylist(ctx context.Context, playlistID string) (types.PlatformTracks, error) {
 	resp, err := ytPost(ctx, "/youtubei/v1/next", map[string]any{"playlistId": playlistID})
 	if err != nil {
-		return utils.PlatformTracks{}, err
+		return types.PlatformTracks{}, err
 	}
 
 	videos := extractMixPlaylistVideos(resp)
@@ -260,19 +260,19 @@ func getYouTubeMixPlaylist(ctx context.Context, playlistID string) (utils.Platfo
 }
 
 // buildTrackList converts raw renderer maps to MusicTrack, dropping empty IDs.
-func buildTrackList(videos []map[string]any, mapper func(map[string]any) utils.MusicTrack) utils.PlatformTracks {
-	out := make([]utils.MusicTrack, 0, len(videos))
+func buildTrackList(videos []map[string]any, mapper func(map[string]any) types.MusicTrack) types.PlatformTracks {
+	out := make([]types.MusicTrack, 0, len(videos))
 	for _, v := range videos {
 		if t := mapper(v); t.Id != "" {
 			out = append(out, t)
 		}
 	}
-	return utils.PlatformTracks{Results: out}
+	return types.PlatformTracks{Results: out}
 }
 
-func mapYTVideo(v map[string]any) utils.MusicTrack {
+func mapYTVideo(v map[string]any) types.MusicTrack {
 	id := digStr(v, "videoId")
-	return utils.MusicTrack{
+	return types.MusicTrack{
 		Id:        id,
 		Title:     digStr(v, "title", "runs", 0, "text"),
 		Url:       ytWatchURL + id,
@@ -280,26 +280,26 @@ func mapYTVideo(v map[string]any) utils.MusicTrack {
 		Channel:   digStr(v, "shortBylineText", "runs", 0, "text"),
 		Duration:  parseYTDuration(v),
 		Views:     digStr(v, "viewCountText", "simpleText"),
-		Platform:  utils.YouTube,
+		Platform:  types.YouTube,
 	}
 }
 
-func mapMixVideo(v map[string]any) utils.MusicTrack {
+func mapMixVideo(v map[string]any) types.MusicTrack {
 	id := digStr(v, "videoId")
-	return utils.MusicTrack{
+	return types.MusicTrack{
 		Id:        id,
 		Title:     digStr(v, "title", "simpleText"),
 		Url:       ytWatchURL + id,
 		Thumbnail: pickYTThumb(v),
 		Channel:   digStr(v, "shortBylineText", "runs", 0, "text"),
 		Duration:  parseYTDuration(v),
-		Platform:  utils.YouTube,
+		Platform:  types.YouTube,
 	}
 }
 
-func mapPlayerToTrack(src map[string]any) utils.MusicTrack {
+func mapPlayerToTrack(src map[string]any) types.MusicTrack {
 	id := digStr(src, "videoDetails", "videoId")
-	return utils.MusicTrack{
+	return types.MusicTrack{
 		Id:        id,
 		Title:     digStr(src, "videoDetails", "title"),
 		Url:       ytWatchURL + id,
@@ -307,7 +307,7 @@ func mapPlayerToTrack(src map[string]any) utils.MusicTrack {
 		Channel:   digStr(src, "videoDetails", "author"),
 		Duration:  atoi(digStr(src, "videoDetails", "lengthSeconds")),
 		Views:     digStr(src, "videoDetails", "viewCount"),
-		Platform:  utils.YouTube,
+		Platform:  types.YouTube,
 	}
 }
 

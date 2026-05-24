@@ -26,7 +26,7 @@ RUN set -eux; \
     for f in $(find ntgcalls_tmp -name 'libntgcalls.*'); do cp "$f" src/vc/; done; \
     rm -rf ntgcalls.zip ntgcalls_tmp
 
-RUN CGO_ENABLED=1 GOOS=linux go build -ldflags="-w -s" -o main .
+RUN CGO_ENABLED=1 GOOS=linux go build -ldflags="-w -s" -o main ./cmd/bot/
 
 FROM debian:12-slim AS runtime
 

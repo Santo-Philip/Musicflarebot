@@ -1,8 +1,8 @@
 package dl
 
 import (
-	"musicflarebot/config"
-	"musicflarebot/src/utils"
+	"musicflarebot/internal/config"
+	"musicflarebot/internal/types"
 )
 
 // musicService defines a standard interface for interacting with various music services.
@@ -11,13 +11,13 @@ type musicService interface {
 	// isValid determines if the service can handle the given query.
 	isValid() bool
 	// getInfo retrieves metadata for a track or playlist.
-	getInfo() (utils.PlatformTracks, error)
+	getInfo() (types.PlatformTracks, error)
 	// search queries the service for a track.
-	search() (utils.PlatformTracks, error)
+	search() (types.PlatformTracks, error)
 	// getTrack fetches detailed information for a single track.
-	getTrack() (utils.TrackInfo, error)
+	getTrack() (types.TrackInfo, error)
 	// downloadTrack handles the download of a track.
-	downloadTrack(trackInfo utils.TrackInfo, video bool) (string, error)
+	downloadTrack(trackInfo types.TrackInfo, video bool) (string, error)
 }
 
 // DownloaderWrapper provides a unified interface for music service interactions.
@@ -58,22 +58,22 @@ func (d *DownloaderWrapper) IsValid() bool {
 }
 
 // GetInfo retrieves metadata by delegating the call to the wrapped service.
-func (d *DownloaderWrapper) GetInfo() (utils.PlatformTracks, error) {
+func (d *DownloaderWrapper) GetInfo() (types.PlatformTracks, error) {
 	return d.service.getInfo()
 }
 
 // Search performs a search by delegating the call to the wrapped service.
-func (d *DownloaderWrapper) Search() (utils.PlatformTracks, error) {
+func (d *DownloaderWrapper) Search() (types.PlatformTracks, error) {
 	return d.service.search()
 }
 
 // GetTrack retrieves detailed track information by delegating the call to the wrapped service.
-func (d *DownloaderWrapper) GetTrack() (utils.TrackInfo, error) {
+func (d *DownloaderWrapper) GetTrack() (types.TrackInfo, error) {
 	return d.service.getTrack()
 }
 
 // DownloadTrack downloads a track by delegating the call to the wrapped service.
 // It returns the file path of the downloaded track or an error if the download fails.
-func (d *DownloaderWrapper) DownloadTrack(info utils.TrackInfo, video bool) (string, error) {
+func (d *DownloaderWrapper) DownloadTrack(info types.TrackInfo, video bool) (string, error) {
 	return d.service.downloadTrack(info, video)
 }

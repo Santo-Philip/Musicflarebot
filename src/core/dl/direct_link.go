@@ -3,7 +3,7 @@ package dl
 import (
 	"time"
 
-	"musicflarebot/src/utils"
+	"musicflarebot/internal/types"
 	"context"
 	"encoding/json"
 	"errors"
@@ -27,9 +27,9 @@ func (d *directLink) isValid() bool {
 	return strings.HasPrefix(d.query, "http://") || strings.HasPrefix(d.query, "https://")
 }
 
-func (d *directLink) getInfo() (utils.PlatformTracks, error) {
+func (d *directLink) getInfo() (types.PlatformTracks, error) {
 	if !d.isValid() {
-		return utils.PlatformTracks{}, errors.New("invalid url")
+		return types.PlatformTracks{}, errors.New("invalid url")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 7*time.Second)
@@ -44,12 +44,12 @@ func (d *directLink) getInfo() (utils.PlatformTracks, error) {
 
 	output, err := cmd.Output()
 	if err != nil {
-		return utils.PlatformTracks{}, fmt.Errorf("invalid or unplayable link: %w", err)
+		return types.PlatformTracks{}, fmt.Errorf("invalid or unplayable link: %w", err)
 	}
 
-	var info utils.FFProbeFormat
+	var info types.FFProbeFormat
 	if err = json.Unmarshal(output, &info); err != nil {
-		return utils.PlatformTracks{}, fmt.Errorf("failed to parse ffprobe output: %w", err)
+		return types.PlatformTracks{}, fmt.Errorf("failed to parse ffprobe output: %w", err)
 	}
 
 	duration := 0
@@ -78,33 +78,33 @@ func (d *directLink) getInfo() (utils.PlatformTracks, error) {
 		title = title[:maxTitleLength-3] + "..."
 	}
 
-	track := utils.MusicTrack{
+	track := types.MusicTrack{
 		Title:    title,
 		Duration: duration,
 		Url:      d.query,
 		Id:       d.query,
-		Platform: utils.DirectLink,
+		Platform: types.DirectLink,
 	}
 
-	return utils.PlatformTracks{Results: []utils.MusicTrack{track}}, nil
+	return types.PlatformTracks{Results: []types.MusicTrack{track}}, nil
 }
 
-func (d *directLink) search() (utils.PlatformTracks, error) {
+func (d *directLink) search() (types.PlatformTracks, error) {
 	return d.getInfo()
 }
 
-func (d *directLink) getTrack() (utils.TrackInfo, error) {
+func (d *directLink) getTrack() (types.TrackInfo, error) {
 	info, err := d.getInfo()
 	if err != nil {
-		return utils.TrackInfo{}, err
+		return types.TrackInfo{}, err
 	}
 
 	if len(info.Results) == 0 {
-		return utils.TrackInfo{}, errors.New("no track found")
+		return types.TrackInfo{}, errors.New("no track found")
 	}
 
 	track := info.Results[0]
-	return utils.TrackInfo{
+	return types.TrackInfo{
 		Id:       track.Id,
 		URL:      track.Url,
 		CdnURL:   track.Url,
@@ -112,6 +112,6 @@ func (d *directLink) getTrack() (utils.TrackInfo, error) {
 	}, nil
 }
 
-func (d *directLink) downloadTrack(_ utils.TrackInfo, _ bool) (string, error) {
+func (d *directLink) downloadTrack(_ types.TrackInfo, _ bool) (string, error) {
 	return d.query, nil
 }

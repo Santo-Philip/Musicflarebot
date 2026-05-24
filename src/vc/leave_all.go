@@ -1,8 +1,8 @@
 package vc
 
 import (
-	"musicflarebot/config"
-	"musicflarebot/src/core/cache"
+	"musicflarebot/internal/config"
+	"musicflarebot/internal/cache"
 	"musicflarebot/src/vc/ubot"
 
 	"context"

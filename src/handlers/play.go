@@ -4,15 +4,16 @@ import (
 	"fmt"
 	"html"
 	"log/slog"
-	"musicflarebot/config"
-	"musicflarebot/src/core"
-	"musicflarebot/src/core/cache"
-	"musicflarebot/src/core/db"
+	"musicflarebot/internal/config"
+	"musicflarebot/internal/ui"
+	"musicflarebot/internal/cache"
+	"musicflarebot/internal/database"
 	"musicflarebot/src/core/dl"
 	"musicflarebot/src/vc"
 	"strings"
 
-	"musicflarebot/src/utils"
+	"musicflarebot/internal/types"
+	"musicflarebot/internal/utils"
 
 	tg "github.com/amarnathcjd/gogram/telegram"
 )
@@ -56,13 +57,13 @@ func handlePlay(m *tg.NewMessage, isVideo bool) error {
 	input := coalesce(url, args)
 
 	if strings.HasPrefix(input, "tgpl_") {
-		playlist, err := db.Instance.GetPlaylist(input)
+		playlist, err := database.GetPlaylist(input)
 		if err != nil {
 			_, err = m.Reply("❌ Playlist not found.")
 			return err
 		}
 
-		tracks := db.ConvertSongsToTracks(playlist.Songs)
+		tracks := database.ConvertSongsToTracks(playlist.Songs)
 		if len(tracks) == 0 {
 			_, err = m.Reply("❌ Playlist is empty.")
 			return err
@@ -98,7 +99,7 @@ func handlePlay(m *tg.NewMessage, isVideo bool) error {
 
 	if url == "" && args == "" && (!isReply || !isValidMedia(rMsg)) {
 		_, _ = m.Reply("<b>Usage:</b>\n/play [song or URL]\n\n<b>Supported Platforms:</b>\n- YouTube\n- Spotify\n- JioSaavn\n- Apple Music", &tg.SendOptions{
-			ReplyMarkup: core.SupportKeyboard(),
+			ReplyMarkup: ui.SupportKeyboard(),
 			ParseMode:   "HTML",
 		})
 		return nil
@@ -118,7 +119,7 @@ func handlePlay(m *tg.NewMessage, isVideo bool) error {
 	if url != "" {
 		if !wrapper.IsValid() {
 			_, _ = updater.Edit("Invalid URL or unsupported platform.\n\n<b>Supported Platforms:</b>\n- YouTube\n- Spotify\n- JioSaavn\n- Apple Music", &tg.SendOptions{
-				ReplyMarkup: core.SupportKeyboard(),
+				ReplyMarkup: ui.SupportKeyboard(),
 				ParseMode:   "HTML",
 			})
 			return nil
@@ -165,9 +166,9 @@ func handleMedia(m *tg.NewMessage, updater *tg.NewMessage, dlMsg *tg.NewMessage,
 	dur := utils.GetFileDur(dlMsg)
 	link := getMessageLink(dlMsg)
 
-	saveCache := utils.CachedTrack{
+	saveCache := types.CachedTrack{
 		URL: link, Name: fileName, User: firstName(m), UserID: m.SenderID(), TrackID: fileID,
-		Duration: dur, IsVideo: isVideo, Platform: utils.Telegram,
+		Duration: dur, IsVideo: isVideo, Platform: types.Telegram,
 	}
 
 	qLen := cache.ChatCache.AddSong(chatID, &saveCache)
@@ -179,7 +180,7 @@ func handleMedia(m *tg.NewMessage, updater *tg.NewMessage, dlMsg *tg.NewMessage,
 			"<u><b>Added to queue: %d</b></u>\n\n<b>Title:</b> <a href='%s'>%s</a>\n\n<b>Duration:</b> %s min\n<b>Requested by:</b> %s",
 			qLen, escURL, escName, utils.SecToMin(saveCache.Duration), escUser,
 		)
-		_, err := updater.Edit(queueInfo, &tg.SendOptions{ReplyMarkup: core.ControlButtons("play"), ParseMode: "HTML", LinkPreview: false})
+		_, err := updater.Edit(queueInfo, &tg.SendOptions{ReplyMarkup: ui.ControlButtons("play"), ParseMode: "HTML", LinkPreview: false})
 		return err
 	}
 
@@ -214,7 +215,7 @@ func handleMedia(m *tg.NewMessage, updater *tg.NewMessage, dlMsg *tg.NewMessage,
 
 	_, err = updater.Edit(nowPlaying, &tg.SendOptions{
 		ParseMode:   "HTML",
-		ReplyMarkup: core.ControlButtons("play"),
+		ReplyMarkup: ui.ControlButtons("play"),
 		LinkPreview: false,
 	})
 
@@ -242,7 +243,7 @@ func handleTextSearch(m *tg.NewMessage, updater *tg.NewMessage, wrapper *dl.Down
 	return handleSingleTrack(m, updater, song, "", chatID, isVideo)
 }
 
-func handleUrl(m *tg.NewMessage, updater *tg.NewMessage, trackInfo utils.PlatformTracks, chatID int64, isVideo bool) error {
+func handleUrl(m *tg.NewMessage, updater *tg.NewMessage, trackInfo types.PlatformTracks, chatID int64, isVideo bool) error {
 	if len(trackInfo.Results) == 1 {
 		track := trackInfo.Results[0]
 		if _track := cache.ChatCache.GetTrackIfExists(chatID, track.Id); _track != nil {
@@ -255,13 +256,13 @@ func handleUrl(m *tg.NewMessage, updater *tg.NewMessage, trackInfo utils.Platfor
 	return handleMultipleTracks(m, updater, trackInfo.Results, chatID, isVideo)
 }
 
-func handleSingleTrack(m *tg.NewMessage, updater *tg.NewMessage, song utils.MusicTrack, filePath string, chatID int64, isVideo bool) error {
+func handleSingleTrack(m *tg.NewMessage, updater *tg.NewMessage, song types.MusicTrack, filePath string, chatID int64, isVideo bool) error {
 	if song.Duration > int(config.Conf.SongDurationLimit) {
 		_, err := updater.Edit(fmt.Sprintf("Sorry, song exceeds max duration of %d minutes.", config.Conf.SongDurationLimit/60))
 		return err
 	}
 
-	saveCache := utils.CachedTrack{
+	saveCache := types.CachedTrack{
 		URL: song.Url, Name: song.Title, User: firstName(m), UserID: m.SenderID(), FilePath: filePath,
 		Thumbnail: song.Thumbnail, TrackID: song.Id, Duration: song.Duration, Channel: song.Channel, Views: song.Views,
 		IsVideo: isVideo, Platform: song.Platform,
@@ -277,7 +278,7 @@ func handleSingleTrack(m *tg.NewMessage, updater *tg.NewMessage, song utils.Musi
 			qLen, escURL, escName, utils.SecToMin(saveCache.Duration), escUser,
 		)
 
-		_, err := updater.Edit(queueInfo, &tg.SendOptions{ReplyMarkup: core.ControlButtons("play"), ParseMode: "HTML", LinkPreview: false})
+		_, err := updater.Edit(queueInfo, &tg.SendOptions{ReplyMarkup: ui.ControlButtons("play"), ParseMode: "HTML", LinkPreview: false})
 		return err
 	}
 
@@ -308,7 +309,7 @@ func handleSingleTrack(m *tg.NewMessage, updater *tg.NewMessage, song utils.Musi
 	)
 
 	_, err := updater.Edit(nowPlaying, &tg.SendOptions{
-		ReplyMarkup: core.ControlButtons("play"),
+		ReplyMarkup: ui.ControlButtons("play"),
 		ParseMode:   "HTML",
 		LinkPreview: false,
 	})
@@ -321,18 +322,18 @@ func handleSingleTrack(m *tg.NewMessage, updater *tg.NewMessage, song utils.Musi
 	return nil
 }
 
-func handleMultipleTracks(m *tg.NewMessage, updater *tg.NewMessage, tracks []utils.MusicTrack, chatID int64, isVideo bool) error {
+func handleMultipleTracks(m *tg.NewMessage, updater *tg.NewMessage, tracks []types.MusicTrack, chatID int64, isVideo bool) error {
 	if len(tracks) == 0 {
 		_, err := updater.Edit("No tracks found.")
 		return err
 	}
 
 	queueHeader := "<u><b>Added to Queue:</b></u>\n<blockquote expandable>\n"
-	var tracksToAdd []*utils.CachedTrack
+	var tracksToAdd []*types.CachedTrack
 	var skippedTracks []string
 
 	shouldPlayFirst := false
-	var firstTrack *utils.CachedTrack
+	var firstTrack *types.CachedTrack
 
 	for _, track := range tracks {
 		if track.Duration > int(config.Conf.SongDurationLimit) {
@@ -340,7 +341,7 @@ func handleMultipleTracks(m *tg.NewMessage, updater *tg.NewMessage, tracks []uti
 			continue
 		}
 
-		saveCache := &utils.CachedTrack{
+		saveCache := &types.CachedTrack{
 			Name: track.Title, TrackID: track.Id, Duration: track.Duration,
 			Thumbnail: track.Thumbnail, User: firstName(m), UserID: m.SenderID(), Platform: track.Platform,
 			IsVideo: isVideo, URL: track.Url, Channel: track.Channel, Views: track.Views,
@@ -402,7 +403,7 @@ func handleMultipleTracks(m *tg.NewMessage, updater *tg.NewMessage, tracks []uti
 
 	_, err := updater.Edit(fullMessage, &tg.SendOptions{
 		ParseMode:   "HTML",
-		ReplyMarkup: core.ControlButtons("play"),
+		ReplyMarkup: ui.ControlButtons("play"),
 		LinkPreview: false,
 	})
 

@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"musicflarebot/src/core/cache"
-	"musicflarebot/src/core/db"
+	"musicflarebot/internal/cache"
+	"musicflarebot/internal/database"
 	"musicflarebot/src/vc/ubot"
 
 	tg "github.com/amarnathcjd/gogram/telegram"
@@ -87,12 +87,12 @@ func (c *TelegramCalls) JoinAssistant(chatID int64) (*ubot.Context, error) {
 
 		cacheKey := fmt.Sprintf("%d:%d", chatID, assistantID)
 		c.statusCache.Delete(cacheKey)
-		_ = db.Instance.RemoveAssistant(chatID)
+		_ = database.RemoveAssistant(chatID)
 
 		return nil, err
 	}
 
-	if err := db.Instance.SetAssistant(chatID, index); err != nil {
+	if err := database.SetAssistant(chatID, index); err != nil {
 		slog.Warn("failed to set assistant in database", "chat_id", chatID, "index", index, "error", err)
 	}
 

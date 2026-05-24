@@ -3,8 +3,8 @@ package handlers
 import (
 	"fmt"
 	"log/slog"
-	"musicflarebot/config"
-	"musicflarebot/src/core/db"
+	"musicflarebot/internal/config"
+	"musicflarebot/internal/database"
 	"os"
 	"path/filepath"
 	"strings"
@@ -23,7 +23,7 @@ func setStartMessageHandler(m *tg.NewMessage) error {
 		return nil
 	}
 
-	if err := db.Instance.SetSetting(db.SettingStartMessage, args); err != nil {
+	if err := database.SetSetting(types.SettingStartMessage, args); err != nil {
 		slog.Error("Failed to set start message", "error", err)
 		_, _ = m.Reply("Failed to save start message.")
 		return nil
@@ -75,7 +75,7 @@ func setStartMediaHandler(m *tg.NewMessage) error {
 		os.Remove(path)
 	}
 
-	if err := db.Instance.SetSetting(db.SettingStartMedia, dest); err != nil {
+	if err := database.SetSetting(types.SettingStartMedia, dest); err != nil {
 		os.Remove(dest)
 		_, _ = m.Reply("Failed to save start media path.")
 		return nil
@@ -97,14 +97,14 @@ func resetStartHandler(m *tg.NewMessage) error {
 		return nil
 	}
 
-	customPath, _ := db.Instance.GetSetting(db.SettingStartMedia)
+	customPath, _ := database.GetSetting(types.SettingStartMedia)
 	if customPath != "" {
 		os.Remove(customPath)
 	}
 
-	_ = db.Instance.DeleteSetting(db.SettingStartMessage)
-	_ = db.Instance.DeleteSetting(db.SettingStartMedia)
-	_ = db.Instance.DeleteSetting(db.SettingStartMediaType)
+	_ = database.DeleteSetting(types.SettingStartMessage)
+	_ = database.DeleteSetting(types.SettingStartMedia)
+	_ = database.DeleteSetting(types.SettingStartMediaType)
 
 	_, _ = m.Reply("Start message and media have been reset to defaults.")
 	return nil

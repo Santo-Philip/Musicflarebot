@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"fmt"
-	"musicflarebot/src/core"
+	"musicflarebot/internal/ui"
 	"strings"
 
 	tg "github.com/amarnathcjd/gogram/telegram"
@@ -11,7 +11,7 @@ import (
 func helpCommandHandler(m *tg.NewMessage) error {
 	if !IsPrivate(m) {
 		_, err := m.Reply("Click the button below for help.", &tg.SendOptions{
-			ReplyMarkup: core.SupportBtn(),
+			ReplyMarkup: ui.SupportBtn(),
 			ParseMode:   "HTML",
 		})
 		return err
@@ -21,7 +21,7 @@ func helpCommandHandler(m *tg.NewMessage) error {
 	_, err := m.Reply(response, &tg.SendOptions{
 		ParseMode:   "HTML",
 		LinkPreview: false,
-		ReplyMarkup: core.HelpMenuKeyboard(),
+		ReplyMarkup: ui.HelpMenuKeyboard(),
 	})
 	return err
 }
@@ -36,9 +36,9 @@ func helpCallbackHandler(q *tg.CallbackQuery) error {
 	cmd := strings.TrimPrefix(data, "help_")
 	response := getHelpText(cmd, "")
 
-	markup := core.BackHelpMenuKeyboard()
+	markup := ui.BackHelpMenuKeyboard()
 	if cmd == "all" || cmd == "back" {
-		markup = core.HelpMenuKeyboard()
+		markup = ui.HelpMenuKeyboard()
 	}
 
 	q.Answer("")

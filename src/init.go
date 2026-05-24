@@ -5,42 +5,42 @@ import (
 	"log/slog"
 	"time"
 
-	"musicflarebot/config"
-	"musicflarebot/src/core/db"
+	"musicflarebot/internal/config"
+	"musicflarebot/internal/database"
 	"musicflarebot/src/vc"
 
 	tg "github.com/amarnathcjd/gogram/telegram"
 )
 
 func loadOwnerSettings() {
-	if loggerId := db.Instance.GetOwnerLoggerId(); loggerId > 0 {
+	if loggerId := database.GetOwnerLoggerId(); loggerId > 0 {
 		config.Conf.LoggerId = loggerId
 		slog.Info("[DB] Loaded LoggerId from database", "id", loggerId)
 	}
-	if group := db.Instance.GetOwnerSupportGroup(); group != "" {
+	if group := database.GetOwnerSupportGroup(); group != "" {
 		config.Conf.SupportGroup = group
 		slog.Info("[DB] Loaded SupportGroup from database")
 	}
-	if channel := db.Instance.GetOwnerSupportChannel(); channel != "" {
+	if channel := database.GetOwnerSupportChannel(); channel != "" {
 		config.Conf.SupportChannel = channel
 		slog.Info("[DB] Loaded SupportChannel from database")
 	}
-	if dur := db.Instance.GetOwnerSongDuration(); dur > 0 {
+	if dur := database.GetOwnerSongDuration(); dur > 0 {
 		config.Conf.SongDurationLimit = dur
 		slog.Info("[DB] Loaded SongDurationLimit from database", "seconds", dur)
 	}
-	if svc := db.Instance.GetOwnerDefaultService(); svc != "" {
+	if svc := database.GetOwnerDefaultService(); svc != "" {
 		config.Conf.DefaultService = svc
 		slog.Info("[DB] Loaded DefaultService from database", "service", svc)
 	}
-	if devs := db.Instance.GetOwnerDevs(); len(devs) > 0 {
+	if devs := database.GetOwnerDevs(); len(devs) > 0 {
 		config.Conf.DEVS = devs
 		slog.Info("[DB] Loaded DEVS from database", "count", len(devs))
 	}
 }
 
 func loadDBSessions() {
-	dbSessions, err := db.Instance.GetSessionStrings()
+	dbSessions, err := database.GetSessionStrings()
 	if err != nil {
 		slog.Error("[DB] Failed to load session strings", "error", err)
 		return
@@ -82,9 +82,9 @@ func Init(client *tg.Client) error {
 	}
 	if len(validSessions) != len(config.Conf.SessionStrings) {
 		config.Conf.SessionStrings = validSessions
-		_ = db.Instance.DeleteAllSessionKeys()
+		_ = database.DeleteAllSessionKeys()
 		for _, s := range validSessions {
-			_ = db.Instance.SetSetting(fmt.Sprintf("session_db_%d", time.Now().UnixNano()+int64(len(validSessions))), s)
+			_ = database.SetSetting(fmt.Sprintf("session_db_%d", time.Now().UnixNano()+int64(len(validSessions))), s)
 		}
 	}
 

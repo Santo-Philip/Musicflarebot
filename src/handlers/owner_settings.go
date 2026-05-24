@@ -3,9 +3,9 @@ package handlers
 import (
 	"fmt"
 	"log/slog"
-	"musicflarebot/config"
-	"musicflarebot/src/core/cache"
-	"musicflarebot/src/core/db"
+	"musicflarebot/internal/config"
+	"musicflarebot/internal/cache"
+	"musicflarebot/internal/database"
 	"strconv"
 	"strings"
 
@@ -29,14 +29,14 @@ func setLoggerIdHandler(m *tg.NewMessage) error {
 		return nil
 	}
 
-	if err = db.Instance.SetSetting("logger_id", args); err != nil {
+	if err = database.SetSetting("logger_id", args); err != nil {
 		slog.Error("Failed to set logger_id", "error", err)
 		_, _ = m.Reply("Failed to save logger ID to database.")
 		return nil
 	}
 
 	config.Conf.LoggerId = id
-	_ = db.Instance.SetSetting("logger_id", fmt.Sprintf("%d", id))
+	_ = database.SetSetting("logger_id", fmt.Sprintf("%d", id))
 
 	_, _ = m.Reply(fmt.Sprintf("Logger ID has been set to <code>%d</code>.", id))
 	return nil
@@ -54,7 +54,7 @@ func setSupportGroupHandler(m *tg.NewMessage) error {
 	}
 
 	username := strings.TrimPrefix(args, "@")
-	if err := db.Instance.SetSetting("support_group", username); err != nil {
+	if err := database.SetSetting("support_group", username); err != nil {
 		slog.Error("Failed to set support_group", "error", err)
 		_, _ = m.Reply("Failed to save support group to database.")
 		return nil
@@ -77,7 +77,7 @@ func setSupportChannelHandler(m *tg.NewMessage) error {
 	}
 
 	username := strings.TrimPrefix(args, "@")
-	if err := db.Instance.SetSetting("support_channel", username); err != nil {
+	if err := database.SetSetting("support_channel", username); err != nil {
 		slog.Error("Failed to set support_channel", "error", err)
 		_, _ = m.Reply("Failed to save support channel to database.")
 		return nil
@@ -105,7 +105,7 @@ func setSongDurationHandler(m *tg.NewMessage) error {
 		return nil
 	}
 
-	if err = db.Instance.SetSetting("song_duration_limit", args); err != nil {
+	if err = database.SetSetting("song_duration_limit", args); err != nil {
 		slog.Error("Failed to set song_duration_limit", "error", err)
 		_, _ = m.Reply("Failed to save song duration limit to database.")
 		return nil
@@ -142,7 +142,7 @@ func setDefaultServiceHandler(m *tg.NewMessage) error {
 		return nil
 	}
 
-	if err := db.Instance.SetSetting("default_service", service); err != nil {
+	if err := database.SetSetting("default_service", service); err != nil {
 		slog.Error("Failed to set default_service", "error", err)
 		_, _ = m.Reply("Failed to save default service to database.")
 		return nil
@@ -178,7 +178,7 @@ func addDevHandler(m *tg.NewMessage) error {
 	}
 
 	config.Conf.DEVS = append(config.Conf.DEVS, userID)
-	_ = db.Instance.SetSetting("devs", joinInt64s(config.Conf.DEVS, ","))
+	_ = database.SetSetting("devs", joinInt64s(config.Conf.DEVS, ","))
 
 	_, _ = m.Reply(fmt.Sprintf("User <code>%d</code> has been added as a developer.", userID))
 	return nil
@@ -217,7 +217,7 @@ func removeDevHandler(m *tg.NewMessage) error {
 	}
 
 	config.Conf.DEVS = newDevs
-	_ = db.Instance.SetSetting("devs", joinInt64s(config.Conf.DEVS, ","))
+	_ = database.SetSetting("devs", joinInt64s(config.Conf.DEVS, ","))
 
 	_, _ = m.Reply(fmt.Sprintf("User <code>%d</code> has been removed from developers.", userID))
 	return nil
@@ -237,8 +237,8 @@ func listSettingsHandler(m *tg.NewMessage) error {
 	sb.WriteString(fmt.Sprintf("<b>Default Service:</b> <code>%s</code>\n", config.Conf.DefaultService))
 	sb.WriteString(fmt.Sprintf("<b>DEVS:</b> <code>%v</code>\n", config.Conf.DEVS))
 
-	startMsg, _ := db.Instance.GetSetting(db.SettingStartMessage)
-	startMedia, _ := db.Instance.GetSetting(db.SettingStartMedia)
+	startMsg, _ := database.GetSetting(types.SettingStartMessage)
+	startMedia, _ := database.GetSetting(types.SettingStartMedia)
 	if startMsg != "" {
 		sb.WriteString(fmt.Sprintf("<b>Start Msg:</b> set (%d chars)\n", len(startMsg)))
 	} else {

@@ -3,12 +3,13 @@ package vc
 import "C"
 
 import (
-	"musicflarebot/config"
-	"musicflarebot/src/core"
-	"musicflarebot/src/core/cache"
-	"musicflarebot/src/core/db"
+	"musicflarebot/internal/config"
+	"musicflarebot/internal/ui"
+	"musicflarebot/internal/cache"
+	"musicflarebot/internal/database"
 	"musicflarebot/src/core/dl"
-	"musicflarebot/src/utils"
+	"musicflarebot/internal/types"
+	"musicflarebot/internal/utils"
 	"musicflarebot/src/vc/ntgcalls"
 	"musicflarebot/src/vc/ubot"
 	"context"
@@ -36,7 +37,7 @@ func (c *TelegramCalls) getClientIndex(chatID int64) (int, error) {
 		return -1, fmt.Errorf("no clients are available")
 	}
 
-	assignedIndex, err := db.Instance.GetAssistant(chatID)
+	assignedIndex, err := database.GetAssistant(chatID)
 	if err != nil {
 		slog.Info("[TelegramCalls] DB.GetAssistant error", "error", err)
 		assignedIndex = -1
@@ -51,7 +52,7 @@ func (c *TelegramCalls) getClientIndex(chatID int64) (int, error) {
 		slog.Info("[TelegramCalls] Could not generate a random number", "error", err)
 		newClientIndex := 0
 		if assignedIndex == -1 && chatID != 0 {
-			if _, err := db.Instance.AssignAssistant(chatID, newClientIndex); err != nil {
+			if _, err := database.AssignAssistant(chatID, newClientIndex); err != nil {
 				logger.Info("[TelegramCalls] DB.AssignAssistant error", "error", err)
 			}
 		}
@@ -60,7 +61,7 @@ func (c *TelegramCalls) getClientIndex(chatID int64) (int, error) {
 
 	newClientIndex := int(n.Int64())
 	if chatID != 0 {
-		if _, err := db.Instance.AssignAssistant(chatID, newClientIndex); err != nil {
+		if _, err := database.AssignAssistant(chatID, newClientIndex); err != nil {
 			logger.Info("[TelegramCalls] DB.AssignAssistant error", "error", err)
 		}
 	}
@@ -102,7 +103,7 @@ func (c *TelegramCalls) playMedia(chatID int64, filePath string, video bool, ffm
 		return err
 	}
 
-	if db.Instance.GetLoggerStatus() {
+	if database.GetLoggerStatus() {
 		go sendLogger(c.bot, chatID, cache.ChatCache.GetPlayingTrack(chatID))
 	}
 
@@ -151,7 +152,7 @@ func (c *TelegramCalls) PlayMedia(chatID int64, filePath string, video bool, ffm
 
 		err = c.playMedia(chatID, filePath, video, ffmpegParameters, call, index)
 		if err == nil {
-			_ = db.Instance.SetAssistant(chatID, index)
+			_ = database.SetAssistant(chatID, index)
 			return nil
 		}
 
@@ -170,12 +171,12 @@ func (c *TelegramCalls) PlayMedia(chatID int64, filePath string, video bool, ffm
 				_, _ = c.LeaveAllForClient(idx)
 			}(index)
 
-			_ = db.Instance.RemoveAssistant(chatID)
+			_ = database.RemoveAssistant(chatID)
 			continue
 		}
 
 		if strings.Contains(err.Error(), "FROZEN_METHOD_INVALID") || strings.Contains(err.Error(), "FLOOD_WAIT_X") {
-			_ = db.Instance.RemoveAssistant(chatID)
+			_ = database.RemoveAssistant(chatID)
 			continue
 		}
 
@@ -187,7 +188,7 @@ func (c *TelegramCalls) PlayMedia(chatID int64, filePath string, video bool, ffm
 }
 
 // downloadAndPrepareSong handles the download and preparation of a song for playback.
-func (c *TelegramCalls) downloadAndPrepareSong(song *utils.CachedTrack, reply *tg.NewMessage) error {
+func (c *TelegramCalls) downloadAndPrepareSong(song *types.CachedTrack, reply *tg.NewMessage) error {
 	if song.FilePath != "" {
 		return nil
 	}
@@ -234,7 +235,7 @@ func (c *TelegramCalls) handleNoSong(chatID int64) error {
 }
 
 // playSong downloads and plays a single song.
-func (c *TelegramCalls) playSong(chatID int64, song *utils.CachedTrack) error {
+func (c *TelegramCalls) playSong(chatID int64, song *types.CachedTrack) error {
 	reply, err := c.bot.SendMessage(chatID, fmt.Sprintf("Downloading %s...", song.Name), nil)
 	if err != nil {
 		slog.Info("[playSong] Failed to send message", "error", err)
@@ -255,7 +256,7 @@ func (c *TelegramCalls) playSong(chatID int64, song *utils.CachedTrack) error {
 	}
 
 	if song.UserID != 0 {
-		if err := db.Instance.IncrementPlayCount(song.UserID, chatID); err != nil {
+		if err := database.IncrementPlayCount(song.UserID, chatID); err != nil {
 			slog.Warn("[playSong] Failed to increment play count", "error", err, "userID", song.UserID)
 		}
 	}
@@ -277,7 +278,7 @@ func (c *TelegramCalls) playSong(chatID int64, song *utils.CachedTrack) error {
 	)
 
 	_, err = reply.Edit(text, &tg.SendOptions{
-		ReplyMarkup: core.ControlButtons("play"),
+		ReplyMarkup: ui.ControlButtons("play"),
 		ParseMode:   "HTML",
 		LinkPreview: false,
 	})

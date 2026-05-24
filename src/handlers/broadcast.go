@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"fmt"
-	"musicflarebot/src/core/db"
+	"musicflarebot/internal/database"
 	"os"
 	"path/filepath"
 	"strings"
@@ -86,8 +86,8 @@ Examples:
 		}
 	}
 
-	chats, _ := db.Instance.GetAllChats()
-	users, _ := db.Instance.GetAllUsers()
+	chats, _ := database.GetAllChats()
+	users, _ := database.GetAllUsers()
 
 	groupsMap := make(map[int64]bool)
 	for _, id := range chats {

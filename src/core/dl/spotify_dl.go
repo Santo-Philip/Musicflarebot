@@ -1,8 +1,8 @@
 package dl
 
 import (
-	"musicflarebot/config"
-	"musicflarebot/src/utils"
+	"musicflarebot/internal/config"
+	"musicflarebot/internal/types"
 	"context"
 	"crypto/aes"
 	"crypto/cipher"
@@ -174,7 +174,7 @@ func rebuildOGG(filename string) error {
 }
 
 // fixOGG uses ffmpeg to correct any remaining issues in the OGG file, ensuring it is playable.
-func fixOGG(inputFile string, track utils.TrackInfo) (string, error) {
+func fixOGG(inputFile string, track types.TrackInfo) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 

@@ -3,8 +3,8 @@ package dl
 import (
 	"time"
 
-	"musicflarebot/config"
-	"musicflarebot/src/utils"
+	"musicflarebot/internal/config"
+	"musicflarebot/internal/types"
 	"context"
 	"crypto/rand"
 	"errors"
@@ -57,9 +57,9 @@ func (y *youTubeData) isValid() bool {
 	return false
 }
 
-func (y *youTubeData) getInfo() (utils.PlatformTracks, error) {
+func (y *youTubeData) getInfo() (types.PlatformTracks, error) {
 	if !y.isValid() {
-		return utils.PlatformTracks{}, errors.New("the provided URL is invalid or the platform is not supported")
+		return types.PlatformTracks{}, errors.New("the provided URL is invalid or the platform is not supported")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 7*time.Second)
@@ -85,7 +85,7 @@ func (y *youTubeData) getInfo() (utils.PlatformTracks, error) {
 
 			for _, track := range tracks {
 				if track.Id == videoID {
-					return utils.PlatformTracks{Results: []utils.MusicTrack{track}}, nil
+					return types.PlatformTracks{Results: []types.MusicTrack{track}}, nil
 				}
 			}
 		}
@@ -95,7 +95,7 @@ func (y *youTubeData) getInfo() (utils.PlatformTracks, error) {
 			if err == nil {
 				for _, track := range tracks {
 					if track.Id == videoID {
-						return utils.PlatformTracks{Results: []utils.MusicTrack{track}}, nil
+						return types.PlatformTracks{Results: []types.MusicTrack{track}}, nil
 					}
 				}
 			}
@@ -105,29 +105,29 @@ func (y *youTubeData) getInfo() (utils.PlatformTracks, error) {
 		return getYouTubeVideo(ctx, videoID)
 	}
 
-	return utils.PlatformTracks{}, errors.New("no video or playlist results were found")
+	return types.PlatformTracks{}, errors.New("no video or playlist results were found")
 }
 
-func (y *youTubeData) search() (utils.PlatformTracks, error) {
+func (y *youTubeData) search() (types.PlatformTracks, error) {
 	tracks, err := searchYouTube(y.Query, 5)
 	if err != nil {
-		return utils.PlatformTracks{}, err
+		return types.PlatformTracks{}, err
 	}
 
 	if len(tracks) == 0 {
-		return utils.PlatformTracks{}, errors.New("no video results were found")
+		return types.PlatformTracks{}, errors.New("no video results were found")
 	}
 
-	return utils.PlatformTracks{Results: tracks}, nil
+	return types.PlatformTracks{Results: tracks}, nil
 }
 
-func (y *youTubeData) getTrack() (utils.TrackInfo, error) {
+func (y *youTubeData) getTrack() (types.TrackInfo, error) {
 	if y.Query == "" {
-		return utils.TrackInfo{}, errors.New("the query is empty")
+		return types.TrackInfo{}, errors.New("the query is empty")
 	}
 
 	if !y.isValid() {
-		return utils.TrackInfo{}, errors.New("the provided URL is invalid or the platform is not supported")
+		return types.TrackInfo{}, errors.New("the provided URL is invalid or the platform is not supported")
 	}
 
 	if y.ApiUrl != "" && y.APIKey != "" {
@@ -138,24 +138,24 @@ func (y *youTubeData) getTrack() (utils.TrackInfo, error) {
 
 	getInfo, err := y.getInfo()
 	if err != nil {
-		return utils.TrackInfo{}, err
+		return types.TrackInfo{}, err
 	}
 	if len(getInfo.Results) == 0 {
-		return utils.TrackInfo{}, errors.New("no video results were found")
+		return types.TrackInfo{}, errors.New("no video results were found")
 	}
 
 	track := getInfo.Results[0]
-	trackInfo := utils.TrackInfo{
+	trackInfo := types.TrackInfo{
 		Id:       track.Id,
 		URL:      track.Url,
-		Platform: utils.YouTube,
+		Platform: types.YouTube,
 	}
 
 	return trackInfo, nil
 }
 
 // downloadTrack handles the download of a track from YouTube.
-func (y *youTubeData) downloadTrack(info utils.TrackInfo, video bool) (string, error) {
+func (y *youTubeData) downloadTrack(info types.TrackInfo, video bool) (string, error) {
 	if !video && y.ApiUrl != "" && y.APIKey != "" {
 		if filePath, err := y.downloadWithApi(info.Id, video); err == nil {
 			return filePath, nil

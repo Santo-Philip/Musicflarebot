@@ -5,7 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"musicflarebot/config"
+	"musicflarebot/internal/config"
 	"os"
 	"os/exec"
 	"path/filepath"

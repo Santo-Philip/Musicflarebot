@@ -3,8 +3,8 @@ package handlers
 import (
 	"fmt"
 
-	"musicflarebot/src/core"
-	"musicflarebot/src/core/cache"
+	"musicflarebot/internal/ui"
+	"musicflarebot/internal/cache"
 	"musicflarebot/src/vc"
 
 	tg "github.com/amarnathcjd/gogram/telegram"
@@ -30,7 +30,7 @@ func muteHandler(m *tg.NewMessage) error {
 		return err
 	}
 
-	_, err := m.Reply(fmt.Sprintf("Playback has been muted by %s.", firstName(m)), &tg.SendOptions{ReplyMarkup: core.ControlButtons("mute")})
+	_, err := m.Reply(fmt.Sprintf("Playback has been muted by %s.", firstName(m)), &tg.SendOptions{ReplyMarkup: ui.ControlButtons("mute")})
 	return err
 }
 
@@ -54,6 +54,6 @@ func unmuteHandler(m *tg.NewMessage) error {
 		return err
 	}
 
-	_, err := m.Reply(fmt.Sprintf("Playback has been unmuted by %s.", firstName(m)), &tg.SendOptions{ReplyMarkup: core.ControlButtons("unmute")})
+	_, err := m.Reply(fmt.Sprintf("Playback has been unmuted by %s.", firstName(m)), &tg.SendOptions{ReplyMarkup: ui.ControlButtons("unmute")})
 	return err
 }

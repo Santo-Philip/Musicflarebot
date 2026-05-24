@@ -3,7 +3,7 @@ package handlers
 import (
 	"fmt"
 
-	"musicflarebot/src/core/cache"
+	"musicflarebot/internal/cache"
 	"musicflarebot/src/vc"
 
 	tg "github.com/amarnathcjd/gogram/telegram"

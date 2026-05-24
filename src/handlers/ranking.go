@@ -3,7 +3,7 @@ package handlers
 import (
 	"fmt"
 	"log/slog"
-	"musicflarebot/src/core/db"
+	"musicflarebot/internal/database"
 	"strconv"
 
 	tg "github.com/amarnathcjd/gogram/telegram"
@@ -13,13 +13,13 @@ func myStatHandler(m *tg.NewMessage) error {
 	userID := m.SenderID()
 	chatID := m.ChatID()
 
-	totalPlays, err := db.Instance.GetUserTotalPlays(userID)
+	totalPlays, err := database.GetUserTotalPlays(userID)
 	if err != nil {
 		slog.Warn("[myStat] GetUserTotalPlays error", "error", err)
 		totalPlays = 0
 	}
 
-	globalRank, _ := db.Instance.GetUserGlobalRank(userID)
+	globalRank, _ := database.GetUserGlobalRank(userID)
 
 	userLink := fmt.Sprintf("<a href=\"tg://user?id=%d\">%s</a>", userID, firstName(m))
 
@@ -32,7 +32,7 @@ func myStatHandler(m *tg.NewMessage) error {
 	)
 
 	if IsGroup(m) {
-		groupPlays, err := db.Instance.GetUserGroupPlays(userID, chatID)
+		groupPlays, err := database.GetUserGroupPlays(userID, chatID)
 		if err != nil {
 			groupPlays = 0
 		}
@@ -51,7 +51,7 @@ func groupStatHandler(m *tg.NewMessage) error {
 
 	chatID := m.ChatID()
 
-	top, err := db.Instance.GetGroupTop(chatID, 25)
+	top, err := database.GetGroupTop(chatID, 25)
 	if err != nil {
 		_, err = m.Reply("Failed to fetch group stats.")
 		return err
@@ -108,7 +108,7 @@ func groupStatHandler(m *tg.NewMessage) error {
 func globalStatHandler(m *tg.NewMessage) error {
 	userID := m.SenderID()
 
-	top, err := db.Instance.GetGlobalTop(25)
+	top, err := database.GetGlobalTop(25)
 	if err != nil {
 		_, err = m.Reply("Failed to fetch global stats.")
 		return err
@@ -148,9 +148,9 @@ func globalStatHandler(m *tg.NewMessage) error {
 		text += fmt.Sprintf("<b>%s.</b> %s — <b>%d</b> plays\n", medal, userDisplay, stat.Plays)
 	}
 
-	globalRank, err := db.Instance.GetUserGlobalRank(userID)
+	globalRank, err := database.GetUserGlobalRank(userID)
 	if err == nil && globalRank > 0 {
-		totalPlays, _ := db.Instance.GetUserTotalPlays(userID)
+		totalPlays, _ := database.GetUserTotalPlays(userID)
 		text += fmt.Sprintf("\n<b>Your Ranking:</b> #%d with %d plays", globalRank, totalPlays)
 	}
 

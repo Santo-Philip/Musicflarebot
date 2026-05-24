@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"musicflarebot/config"
+	"musicflarebot/internal/config"
 
 	tg "github.com/amarnathcjd/gogram/telegram"
 )

@@ -3,8 +3,8 @@ package handlers
 import (
 	"fmt"
 
-	"musicflarebot/src/core"
-	"musicflarebot/src/core/cache"
+	"musicflarebot/internal/ui"
+	"musicflarebot/internal/cache"
 	"musicflarebot/src/vc"
 
 	tg "github.com/amarnathcjd/gogram/telegram"
@@ -27,7 +27,7 @@ func pauseHandler(m *tg.NewMessage) error {
 		return nil
 	}
 
-	_, err := m.Reply(fmt.Sprintf("Playback has been paused by %s.", firstName(m)), &tg.SendOptions{ReplyMarkup: core.ControlButtons("pause")})
+	_, err := m.Reply(fmt.Sprintf("Playback has been paused by %s.", firstName(m)), &tg.SendOptions{ReplyMarkup: ui.ControlButtons("pause")})
 	return err
 }
 
@@ -48,6 +48,6 @@ func resumeHandler(m *tg.NewMessage) error {
 		return nil
 	}
 
-	_, err := m.Reply(fmt.Sprintf("Playback has been resumed by %s.", firstName(m)), &tg.SendOptions{ReplyMarkup: core.ControlButtons("resume")})
+	_, err := m.Reply(fmt.Sprintf("Playback has been resumed by %s.", firstName(m)), &tg.SendOptions{ReplyMarkup: ui.ControlButtons("resume")})
 	return err
 }
