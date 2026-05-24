@@ -37,8 +37,8 @@ func getCalls() *TelegramCalls {
 		instance = &TelegramCalls{
 			uBContext:        make(map[int]*ubot.Context),
 			clients:          make(map[int]*tg.Client),
-			statusCache:      cache.NewCache[string](2 * time.Hour),
-			inviteCache:      cache.NewCache[string](2 * time.Hour),
+			statusCache:      cache.New[string](2 * time.Hour),
+			inviteCache:      cache.New[string](2 * time.Hour),
 			clientsBySession: make(map[string]int),
 		}
 	})

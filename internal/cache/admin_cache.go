@@ -1,0 +1,145 @@
+package cache
+
+import (
+	"fmt"
+	"time"
+
+	tg "github.com/amarnathcjd/gogram/telegram"
+)
+
+var AdminCache = New[[]*tg.Participant](time.Hour)
+
+func adminCacheKey(chatID int64) string {
+	return fmt.Sprintf("admins:%d", chatID)
+}
+
+func GetChatAdminIDs(chatID int64) ([]int64, error) {
+	admins, ok := AdminCache.Get(adminCacheKey(chatID))
+	if !ok {
+		return nil, fmt.Errorf("admins for chat %d not in cache", chatID)
+	}
+
+	ids := make([]int64, 0, len(admins))
+	for _, admin := range admins {
+		if admin.User != nil {
+			ids = append(ids, admin.User.ID)
+		}
+	}
+	return ids, nil
+}
+
+func GetAdmins(client *tg.Client, chatID int64, forceReload bool) ([]*tg.Participant, error) {
+	key := adminCacheKey(chatID)
+
+	if !forceReload {
+		if admins, ok := AdminCache.Get(key); ok {
+			return admins, nil
+		}
+	}
+
+	admins, _, err := client.GetChatMembers(chatID, &tg.ParticipantOptions{
+		Filter: &tg.ChannelParticipantsAdmins{},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("fetch admins for chat %d: %w", chatID, err)
+	}
+
+	AdminCache.Set(key, admins)
+	return admins, nil
+}
+
+func GetUserAdmin(client *tg.Client, chatID, userID int64, forceReload bool) (*tg.Participant, error) {
+	admins, err := GetAdmins(client, chatID, forceReload)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, admin := range admins {
+		if admin.User != nil && admin.User.ID == userID {
+			return admin, nil
+		}
+	}
+
+	return nil, fmt.Errorf("user %d is not an administrator in chat %d", userID, chatID)
+}
+
+func GetRights(client *tg.Client, chatID, userID int64, forceReload bool) (*tg.ChatAdminRights, error) {
+	admin, err := GetUserAdmin(client, chatID, userID, forceReload)
+	if err != nil {
+		return nil, err
+	}
+
+	if admin.Rights != nil {
+		return admin.Rights, nil
+	}
+	if admin.Status == "creator" {
+		return allCreatorRights, nil
+	}
+
+	return nil, fmt.Errorf("user %d has no admin rights in chat %d", userID, chatID)
+}
+
+var allCreatorRights = &tg.ChatAdminRights{
+	ChangeInfo:     true,
+	DeleteMessages: true,
+	EditMessages:   true,
+	InviteUsers:    true,
+	Other:          true,
+	PinMessages:    true,
+	PostMessages:   true,
+	AddAdmins:      true,
+	BanUsers:       true,
+	ManageCall:     true,
+	Anonymous:      false,
+}
+
+func ClearAdminCache(chatID int64) {
+	if chatID == 0 {
+		AdminCache.Clear()
+		return
+	}
+	AdminCache.Delete(adminCacheKey(chatID))
+}
+
+func UpdateAdminCache(chatID int64, member *tg.Participant) {
+	key := adminCacheKey(chatID)
+	admins, ok := AdminCache.Get(key)
+	if !ok {
+		return
+	}
+
+	userID := int64(0)
+	if member.User != nil {
+		userID = member.User.ID
+	}
+
+	if userID == 0 {
+		return
+	}
+
+	isAdmin := member.Status == "administrator" || member.Status == "creator"
+
+	updated := false
+	newAdmins := make([]*tg.Participant, 0, len(admins))
+	for _, admin := range admins {
+		currentID := int64(0)
+		if admin.User != nil {
+			currentID = admin.User.ID
+		}
+
+		if currentID == userID {
+			if isAdmin {
+				newAdmins = append(newAdmins, member)
+				updated = true
+			}
+			continue
+		}
+		newAdmins = append(newAdmins, admin)
+	}
+
+	if isAdmin && !updated {
+		newAdmins = append(newAdmins, member)
+	}
+
+	AdminCache.Set(key, newAdmins)
+}
