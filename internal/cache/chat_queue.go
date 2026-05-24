@@ -11,8 +11,9 @@ type ChatData struct {
 }
 
 type ChatCacher struct {
-	mu        sync.RWMutex
-	chatCache map[int64]*ChatData
+	mu         sync.RWMutex
+	chatCache  map[int64]*ChatData
+	eqPresets  map[int64]string
 }
 
 var ChatCache = newChatCacher()
@@ -20,7 +21,20 @@ var ChatCache = newChatCacher()
 func newChatCacher() *ChatCacher {
 	return &ChatCacher{
 		chatCache: make(map[int64]*ChatData),
+		eqPresets: make(map[int64]string),
 	}
+}
+
+func (c *ChatCacher) GetEQPreset(chatID int64) string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.eqPresets[chatID]
+}
+
+func (c *ChatCacher) SetEQPreset(chatID int64, preset string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.eqPresets[chatID] = preset
 }
 
 func (c *ChatCacher) getOrCreate(chatID int64) *ChatData {
