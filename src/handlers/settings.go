@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log/slog"
 	"musicflarebot/internal/types"
-	"musicflarebot/internal/utils"
 	"strings"
 
 	"musicflarebot/internal/ui"

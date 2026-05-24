@@ -3,7 +3,6 @@ package handlers
 import (
 	"log/slog"
 	"musicflarebot/internal/types"
-	"musicflarebot/internal/utils"
 	"slices"
 	"strings"
 
