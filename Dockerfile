@@ -14,7 +14,16 @@ RUN go mod download
 
 COPY . .
 
-RUN go run setup_ntgcalls.go
+RUN set -eux; \
+    RELEASE_URL="https://api.github.com/repos/pytgcalls/ntgcalls/releases/tags/v2.2.1-beta02"; \
+    ASSET="ntgcalls.linux-x86_64-static_libs.zip"; \
+    DL_URL=$(curl -sSL "$RELEASE_URL" | grep -oP '"browser_download_url": "\K[^"]*(?=")' | grep -F "$ASSET" | head -1); \
+    if [ -z "$DL_URL" ]; then echo "no asset found"; exit 1; fi; \
+    curl -sL -o ntgcalls.zip "$DL_URL"; \
+    unzip -qo ntgcalls.zip -d ntgcalls_tmp; \
+    find ntgcalls_tmp -name 'ntgcalls.h' -exec cp {} src/vc/ntgcalls/ntgcalls.h \; ; \
+    find ntgcalls_tmp -name 'libntgcalls.*' -exec cp {} src/vc/ \; ; \
+    rm -rf ntgcalls.zip ntgcalls_tmp
 
 RUN CGO_ENABLED=1 GOOS=linux go build -ldflags="-w -s" -o main .
 
