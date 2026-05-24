@@ -50,6 +50,28 @@ func getVideoDimensions(filePath string) (int, int) {
 
 var isURLRegex = regexp.MustCompile(`^https?://`)
 
+var afRegex = regexp.MustCompile(`(-af\s+"[^"]+")|(-af\s+'[^']+')|(-af\s+\S+)|(-filter:a\s+"[^"]+")|(-filter:a\s+'[^']+')|(-filter:a\s+\S+)`)
+
+func extractAudioFilter(params string) string {
+	m := afRegex.FindString(params)
+	if m == "" {
+		return ""
+	}
+
+	m = strings.TrimSpace(m)
+	if strings.HasPrefix(m, "-af") || strings.HasPrefix(m, "-filter:a") {
+		parts := strings.SplitN(m, " ", 2)
+		if len(parts) == 2 {
+			return strings.Trim(parts[1], `"'`)
+		}
+	}
+	return strings.Trim(m, `"'`)
+}
+
+func removeAudioFilter(params string) string {
+	return afRegex.ReplaceAllString(params, "")
+}
+
 // getMediaDescription creates a media description for ntgcalls based on the provided file path, video status, and ffmpeg parameters.
 func getMediaDescription(filePath string, isVideo bool, ffmpegParameters string) ntgcalls.MediaDescription {
 	audioDescription := &ntgcalls.AudioDescription{
@@ -67,10 +89,14 @@ func getMediaDescription(filePath string, isVideo bool, ffmpegParameters string)
 		audioCmd.WriteString("-reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 2 ")
 	}
 
-	var seekFlags, filterFlags string
+	var seekFlags, filterFlags, audioFilterFlags string
 	if ffmpegParameters != "" {
 		if strings.Contains(ffmpegParameters, "filter:") {
 			filterFlags = ffmpegParameters
+			if strings.Contains(filterFlags, "af=") || strings.Contains(filterFlags, "filter:a") {
+				audioFilterFlags = extractAudioFilter(filterFlags)
+				filterFlags = removeAudioFilter(filterFlags)
+			}
 		} else {
 			seekFlags = ffmpegParameters
 		}
@@ -85,10 +111,18 @@ func getMediaDescription(filePath string, isVideo bool, ffmpegParameters string)
 		audioCmd.WriteString(filterFlags + " ")
 	}
 
-	audioCmd.WriteString(fmt.Sprintf("-af dynaudnorm=peak=0.95:maxgain=30 -f s16le -ac %d -ar %d -v quiet pipe:1",
-		audioDescription.ChannelCount,
-		audioDescription.SampleRate,
-	))
+	if audioFilterFlags != "" {
+		audioCmd.WriteString(fmt.Sprintf("-af \"%s,dynaudnorm=peak=0.95:maxgain=30\" -f s16le -ac %d -ar %d -v quiet pipe:1",
+			audioFilterFlags,
+			audioDescription.ChannelCount,
+			audioDescription.SampleRate,
+		))
+	} else {
+		audioCmd.WriteString(fmt.Sprintf("-af dynaudnorm=peak=0.95:maxgain=30 -f s16le -ac %d -ar %d -v quiet pipe:1",
+			audioDescription.ChannelCount,
+			audioDescription.SampleRate,
+		))
+	}
 	audioDescription.Input = audioCmd.String()
 
 	if !isVideo {

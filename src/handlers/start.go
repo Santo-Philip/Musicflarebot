@@ -23,6 +23,25 @@ var (
 	startMediaPath string
 )
 
+func getCustomStartMedia() string {
+	customPath, err := db.Instance.GetSetting(db.SettingStartMedia)
+	if err != nil || customPath == "" {
+		return ""
+	}
+	if _, err := os.Stat(customPath); err == nil {
+		return customPath
+	}
+	return ""
+}
+
+func getCustomStartMessage() string {
+	msg, err := db.Instance.GetSetting(db.SettingStartMessage)
+	if err != nil {
+		return ""
+	}
+	return msg
+}
+
 func pingHandler(m *tg.NewMessage) error {
 	start := time.Now()
 
@@ -109,13 +128,20 @@ func startHandler(m *tg.NewMessage) error {
 			_ = db.Instance.AddUser(chatID)
 		}(chatID)
 
-		response := fmt.Sprintf(
-			"Hey %s,\nThis is %s !\n\n<b>Supported Platforms:</b> YouTube, Spotify, Apple Music, SoundCloud, MXPlayer, Deezer, Twitch, Kick....\n\n<b><i>Click on the help button for more info.</i></b>",
-			firstName(m),
-			client.Me().FirstName,
-		)
+		customMsg := getCustomStartMessage()
+		response := customMsg
+		if response == "" {
+			response = fmt.Sprintf(
+				"Hey %s,\nThis is %s !\n\n<b>Supported Platforms:</b> YouTube, Spotify, Apple Music, SoundCloud, MXPlayer, Deezer, Twitch, Kick....\n\n<b><i>Click on the help button for more info.</i></b>",
+				firstName(m),
+				client.Me().FirstName,
+			)
+		}
 
-		media := getCachedStartMedia()
+		media := getCustomStartMedia()
+		if media == "" {
+			media = getCachedStartMedia()
+		}
 		if media == "" {
 			media = config.Conf.StartImg
 		}

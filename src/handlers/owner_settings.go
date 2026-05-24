@@ -237,6 +237,19 @@ func listSettingsHandler(m *tg.NewMessage) error {
 	sb.WriteString(fmt.Sprintf("<b>Default Service:</b> <code>%s</code>\n", config.Conf.DefaultService))
 	sb.WriteString(fmt.Sprintf("<b>DEVS:</b> <code>%v</code>\n", config.Conf.DEVS))
 
+	startMsg, _ := db.Instance.GetSetting(db.SettingStartMessage)
+	startMedia, _ := db.Instance.GetSetting(db.SettingStartMedia)
+	if startMsg != "" {
+		sb.WriteString(fmt.Sprintf("<b>Start Msg:</b> set (%d chars)\n", len(startMsg)))
+	} else {
+		sb.WriteString("<b>Start Msg:</b> default\n")
+	}
+	if startMedia != "" {
+		sb.WriteString(fmt.Sprintf("<b>Start Media:</b> <code>%s</code>\n", startMedia))
+	} else {
+		sb.WriteString("<b>Start Media:</b> default\n")
+	}
+
 	_, err := m.Reply(sb.String(), &tg.SendOptions{ParseMode: "HTML"})
 	return err
 }

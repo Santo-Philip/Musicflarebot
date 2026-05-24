@@ -62,7 +62,10 @@ func LoadModules(c *tg.Client) {
 	c.OnCommand("playlistinfo", playlistInfoHandler)
 	c.OnCommand("myplaylists", myPlaylistsHandler)
 	c.OnCommand("myplist", myPlaylistsHandler)
-	c.OnCommand("stats", statsHandler)
+	c.OnCommand("sysstats", statsHandler)
+	c.OnCommand("stats", globalStatHandler)
+	c.OnCommand("mystat", myStatHandler)
+	c.OnCommand("groupstat", groupStatHandler)
 
 	c.OnCommand("set_logger_id", setLoggerIdHandler)
 	c.OnCommand("set_support_group", setSupportGroupHandler)
@@ -78,6 +81,11 @@ func LoadModules(c *tg.Client) {
 	c.OnCommand("listacc", listAccHandler)
 	c.OnCommand("removeacc", removeAccHandler)
 	c.OnCommand("setcookies", setCookiesHandler)
+	c.OnCommand("setstartmsg", setStartMessageHandler)
+	c.OnCommand("setstartmessage", setStartMessageHandler)
+	c.OnCommand("setstartmedia", setStartMediaHandler)
+	c.OnCommand("resetstart", resetStartHandler)
+	c.OnCommand("eq", eqHandler)
 
 	c.OnCallback("", func(q *tg.CallbackQuery) error {
 		data := q.DataString()
@@ -90,9 +98,14 @@ func LoadModules(c *tg.Client) {
 			return helpCallbackHandler(q)
 		case data == "settings_main" || data == "settings_delete" || data == "settings_play" || data == "settings_admin" || data == "settings_lang":
 			return settingsCallbackHandler(q)
+		case data == "play_eq":
+			return playEqCallbackHandler(q)
 		default:
 			if len(data) > 5 && data[:5] == "play_" {
 				return playCallbackHandler(q)
+			}
+			if len(data) > 3 && data[:3] == "eq_" {
+				return eqCallbackHandler(q)
 			}
 			q.Answer("Unknown action")
 			return nil

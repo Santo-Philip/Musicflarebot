@@ -245,9 +245,19 @@ func (c *TelegramCalls) playSong(chatID int64, song *utils.CachedTrack) error {
 		return c.PlayNext(chatID)
 	}
 
-	if err = c.PlayMedia(chatID, song.FilePath, song.IsVideo, ""); err != nil {
+	eqPreset := cache.ChatCache.GetEQPreset(chatID)
+	eqFilter := BuildAudioFilterFlag(eqPreset)
+	ffmpegParams := eqFilter
+
+	if err = c.PlayMedia(chatID, song.FilePath, song.IsVideo, ffmpegParams); err != nil {
 		_, err := reply.Edit(err.Error(), &tg.SendOptions{ParseMode: "HTML", LinkPreview: false})
 		return err
+	}
+
+	if song.UserID != 0 {
+		if err := db.Instance.IncrementPlayCount(song.UserID, chatID); err != nil {
+			slog.Warn("[playSong] Failed to increment play count", "error", err, "userID", song.UserID)
+		}
 	}
 
 	if song.Duration == 0 {

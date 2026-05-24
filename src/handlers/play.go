@@ -166,7 +166,7 @@ func handleMedia(m *tg.NewMessage, updater *tg.NewMessage, dlMsg *tg.NewMessage,
 	link := getMessageLink(dlMsg)
 
 	saveCache := utils.CachedTrack{
-		URL: link, Name: fileName, User: firstName(m), TrackID: fileID,
+		URL: link, Name: fileName, User: firstName(m), UserID: m.SenderID(), TrackID: fileID,
 		Duration: dur, IsVideo: isVideo, Platform: utils.Telegram,
 	}
 
@@ -262,7 +262,7 @@ func handleSingleTrack(m *tg.NewMessage, updater *tg.NewMessage, song utils.Musi
 	}
 
 	saveCache := utils.CachedTrack{
-		URL: song.Url, Name: song.Title, User: firstName(m), FilePath: filePath,
+		URL: song.Url, Name: song.Title, User: firstName(m), UserID: m.SenderID(), FilePath: filePath,
 		Thumbnail: song.Thumbnail, TrackID: song.Id, Duration: song.Duration, Channel: song.Channel, Views: song.Views,
 		IsVideo: isVideo, Platform: song.Platform,
 	}
@@ -342,7 +342,7 @@ func handleMultipleTracks(m *tg.NewMessage, updater *tg.NewMessage, tracks []uti
 
 		saveCache := &utils.CachedTrack{
 			Name: track.Title, TrackID: track.Id, Duration: track.Duration,
-			Thumbnail: track.Thumbnail, User: firstName(m), Platform: track.Platform,
+			Thumbnail: track.Thumbnail, User: firstName(m), UserID: m.SenderID(), Platform: track.Platform,
 			IsVideo: isVideo, URL: track.Url, Channel: track.Channel, Views: track.Views,
 		}
 		tracksToAdd = append(tracksToAdd, saveCache)
