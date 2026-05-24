@@ -28,6 +28,16 @@ func helpCommandHandler(m *tg.NewMessage) error {
 
 func helpCallbackHandler(q *tg.CallbackQuery) error {
 	data := q.DataString()
+	if data == "help" {
+		response := getHelpText("all", "")
+		_, _ = q.Answer("")
+		_, err := q.Edit(response, &tg.SendOptions{
+			ParseMode:   "HTML",
+			LinkPreview: false,
+			ReplyMarkup: ui.HelpMenuKeyboard(),
+		})
+		return err
+	}
 	if !strings.HasPrefix(data, "help_") {
 		q.Answer("Processing...")
 		return nil
@@ -59,6 +69,37 @@ func getHelpText(cmd string, userName string) string {
 				"<b>ᴄʟɪᴄᴋ ᴏɴ ᴛʜᴇ ʙᴜᴛᴛᴏɴs ʙᴇʟᴏᴡ</b>\n\n" +
 				"<b>ᴅᴇᴠᴇʟᴏᴘᴇʀ:</b> <a href='https://t.me/nexfang'>@NexFang</a>",
 		)
+	case "music":
+		return `<b>🎵 Music Commands</b>
+
+Use <code>/play [song name or URL]</code> to start playing music in your group.
+
+<b>Examples:</b>
+ • <code>/play Never Gonna Give You Up</code> — Search and play
+ • <code>/play https://youtu.be/dQw4w9WgXcQ</code> — Play from URL
+ • <code>/search [query]</code> — Search interactively
+
+<b>Supported sources:</b> YouTube, Spotify, Apple Music, SoundCloud, JioSaavn`
+	case "playback":
+		return `<b>🎧 Playback Controls</b>
+
+<b>Commands:</b>
+ • <code>/pause</code> — Pause current playback
+ • <code>/resume</code> — Resume playback
+ • <code>/skip</code> — Skip to next track
+ • <code>/stop</code> — Stop playback and leave VC
+ • <code>/mute</code> — Mute the bot
+ • <code>/unmute</code> — Unmute the bot
+ • <code>/seek [seconds]</code> — Seek within track
+ • <code>/speed [0.5-4.0]</code> — Change playback speed
+ • <code>/loop [count]</code> — Loop current or all tracks
+
+<b>Inline buttons:</b> Control playback via buttons on the now-playing message.`
+	case "about":
+		return "<b>ℹ️ About</b>\n\n" +
+			"This is a Telegram music player bot built with Go.\n\n" +
+			"<b>Supported Platforms:</b> YouTube, Spotify, Apple Music, SoundCloud, JioSaavn, Deezer, Twitch, Kick\n\n" +
+			"<b>Developer:</b> <a href='https://t.me/nexfang'>@NexFang</a>"
 	case "user":
 		return `<b>User Commands</b>
 

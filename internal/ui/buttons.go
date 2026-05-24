@@ -141,8 +141,8 @@ func OwnerSettingsKeyboard() *tg.ReplyInlineMarkup {
 
 func SettingsKeyboard(playMode, adminMode string, cmdDelete bool, language string) *tg.ReplyInlineMarkup {
 	return markup(
-		row(dataBtn("🎵 Play Mode: "+playMode, "settings_playmode"), dataBtn("👑 Admin Mode: "+adminMode, "settings_adminmode")),
-		row(dataBtn("🗑 Del Cmd: "+boolStr(cmdDelete), "settings_cmddelete"), dataBtn("🌐 Lang: "+language, "settings_language")),
+		row(dataBtn("🎵 Play Mode: "+playMode, "settings_play"), dataBtn("👑 Admin Mode: "+adminMode, "settings_admin")),
+		row(dataBtn("🗑 Del Cmd: "+boolStr(cmdDelete), "settings_delete"), dataBtn("🌐 Lang: "+language, "settings_lang")),
 		row(dataBtn("🗑 Close", "close")),
 	)
 }

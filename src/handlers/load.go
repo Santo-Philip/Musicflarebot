@@ -94,12 +94,20 @@ func LoadModules(c *tg.Client) {
 			return helpCallbackHandler(q)
 		case data == "vcplay_close":
 			return vcPlayHandler(q)
-		case data == "help_all" || data == "help_user" || data == "help_admin" || data == "help_owner" || data == "help_devs" || data == "help_playlist":
+		case data == "help" || data == "help_all" || data == "help_user" || data == "help_admin" || data == "help_owner" || data == "help_devs" || data == "help_playlist" || data == "help_music" || data == "help_playback" || data == "help_about":
 			return helpCallbackHandler(q)
 		case data == "settings_main" || data == "settings_delete" || data == "settings_play" || data == "settings_admin" || data == "settings_lang":
 			return settingsCallbackHandler(q)
 		case data == "play_eq":
 			return playEqCallbackHandler(q)
+		case data == "support_group":
+			return supportGroupHandler(q)
+		case data == "support_channel":
+			return supportChannelHandler(q)
+		case data == "about":
+			return aboutHandler(q)
+		case data == "back_to_start":
+			return backToStartHandler(q)
 		default:
 			if len(data) > 5 && data[:5] == "play_" {
 				return playCallbackHandler(q)
