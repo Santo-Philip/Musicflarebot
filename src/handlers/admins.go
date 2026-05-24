@@ -14,7 +14,7 @@ import (
 
 const reloadCooldown = 3 * time.Minute
 
-var reloadRateLimit = cache.NewCache[time.Time](reloadCooldown)
+var reloadRateLimit = cache.New[time.Time](reloadCooldown)
 
 func reloadAdminCacheHandler(m *tg.NewMessage) error {
 	if IsPrivate(m) {

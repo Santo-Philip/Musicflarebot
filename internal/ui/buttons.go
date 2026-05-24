@@ -130,13 +130,28 @@ func ServicesKeyboard() *tg.ReplyInlineMarkup {
 	)
 }
 
-func SettingsKeyboard() *tg.ReplyInlineMarkup {
+func OwnerSettingsKeyboard() *tg.ReplyInlineMarkup {
 	return markup(
 		row(dataBtn("🎵 Default Service", "set_service"), dataBtn("⏱ Max Duration", "set_duration")),
 		row(dataBtn("📢 Channel", "set_channel"), dataBtn("💬 Support Group", "set_support")),
 		row(dataBtn("🆘 Start Message", "set_start_msg"), dataBtn("🎬 Start Media", "set_start_media")),
 		row(dataBtn("🗑 Close", "close")),
 	)
+}
+
+func SettingsKeyboard(playMode, adminMode string, cmdDelete bool, language string) *tg.ReplyInlineMarkup {
+	return markup(
+		row(dataBtn("🎵 Play Mode: "+playMode, "settings_playmode"), dataBtn("👑 Admin Mode: "+adminMode, "settings_adminmode")),
+		row(dataBtn("🗑 Del Cmd: "+boolStr(cmdDelete), "settings_cmddelete"), dataBtn("🌐 Lang: "+language, "settings_language")),
+		row(dataBtn("🗑 Close", "close")),
+	)
+}
+
+func boolStr(b bool) string {
+	if b {
+		return "✅"
+	}
+	return "❌"
 }
 
 func CloseButton() *tg.ReplyInlineMarkup {

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"musicflarebot/internal/config"
 	"musicflarebot/internal/database"
+	"musicflarebot/internal/types"
 	"os"
 	"path/filepath"
 	"strings"
