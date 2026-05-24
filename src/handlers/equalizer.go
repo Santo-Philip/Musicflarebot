@@ -49,7 +49,7 @@ func eqCallbackHandler(q *tg.CallbackQuery) error {
 	chatID := q.ChatID
 
 	if preset == "close" {
-		_ = q.Delete()
+		q.Delete()
 		return nil
 	}
 

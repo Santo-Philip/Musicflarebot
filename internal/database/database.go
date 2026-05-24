@@ -505,6 +505,38 @@ func (db *Database) SetOwnerDevs(devs []int64) error {
 	return db.SetSetting("devs", strings.Join(parts, " "))
 }
 
+func (db *Database) GetOwnerSupportGroup() string {
+	v, _ := db.GetSetting("support_group")
+	return v
+}
+
+func (db *Database) GetOwnerSupportChannel() string {
+	v, _ := db.GetSetting("support_channel")
+	return v
+}
+
+func (db *Database) GetOwnerSongDuration() int64 {
+	v, err := db.GetSetting("song_duration_limit")
+	if err != nil || v == "" {
+		return 0
+	}
+	d, _ := strconv.ParseInt(v, 10, 64)
+	return d
+}
+
+func (db *Database) GetOwnerDefaultService() string {
+	v, _ := db.GetSetting("default_service")
+	return v
+}
+
+func (db *Database) DeleteAllSessionKeys() error {
+	ctx, cancel := db.ctx()
+	defer cancel()
+
+	_, err := db.pool.Exec(ctx, `DELETE FROM bot_settings WHERE s_key LIKE 'session_%'`)
+	return err
+}
+
 // ─── Auth ─────────────────────────────────────────────────
 
 func (db *Database) AddAuthUser(chatID, userID int64) error {
@@ -560,6 +592,14 @@ func (db *Database) GetAuthUsers(chatID int64) []int64 {
 func (db *Database) IsAuthUser(chatID, userID int64) bool {
 	users := db.GetAuthUsers(chatID)
 	return contains(users, userID)
+}
+
+func (db *Database) IsAdmin(chatID, userID int64) bool {
+	admins, err := cache.GetChatAdminIDs(chatID)
+	if err != nil || admins == nil {
+		return false
+	}
+	return contains(admins, userID)
 }
 
 // ─── Blacklist ────────────────────────────────────────────
@@ -778,17 +818,16 @@ func (db *Database) DeletePlaylist(id string, userID int64) error {
 	return err
 }
 
-func (db *Database) AddSongToPlaylist(id string, trackID, name, url, platform string, duration int) error {
+func (db *Database) AddSongToPlaylist(id string, song Song) error {
 	ctx, cancel := db.ctx()
 	defer cancel()
 
-	s := Song{URL: url, Name: name, TrackID: trackID, Duration: duration, Platform: platform}
-	songJSON, _ := json.Marshal(s)
+	songJSON, _ := json.Marshal(song)
 	_, err := db.pool.Exec(ctx,
 		`UPDATE playlists SET songs = songs || $1::jsonb WHERE id = $2 AND NOT EXISTS (
 			SELECT 1 FROM jsonb_array_elements(songs) elem WHERE elem->>'track_id' = $3
 		)`,
-		[]byte(fmt.Sprintf("[%s]", string(songJSON))), id, trackID,
+		[]byte(fmt.Sprintf("[%s]", string(songJSON))), id, song.TrackID,
 	)
 	return err
 }
@@ -1164,11 +1203,11 @@ func CreatePlaylist(name string, userID int64) (string, error) {
 	return Instance.CreatePlaylist(name, userID)
 }
 
-func AddSongToPlaylist(id string, trackID, name, url, platform string, duration int) error {
+func AddSongToPlaylist(id string, song Song) error {
 	if Instance == nil {
 		return fmt.Errorf("database not initialized")
 	}
-	return Instance.AddSongToPlaylist(id, trackID, name, url, platform, duration)
+	return Instance.AddSongToPlaylist(id, song)
 }
 
 func RemoveSongFromPlaylist(id string, trackID string) error {
@@ -1316,4 +1355,74 @@ func GetOwnerLoggerId() int64 {
 		return 0
 	}
 	return Instance.GetOwnerLoggerId()
+}
+
+func GetOwnerSupportGroup() string {
+	if Instance == nil {
+		return ""
+	}
+	return Instance.GetOwnerSupportGroup()
+}
+
+func GetOwnerSupportChannel() string {
+	if Instance == nil {
+		return ""
+	}
+	return Instance.GetOwnerSupportChannel()
+}
+
+func GetOwnerSongDuration() int64 {
+	if Instance == nil {
+		return 0
+	}
+	return Instance.GetOwnerSongDuration()
+}
+
+func GetOwnerDefaultService() string {
+	if Instance == nil {
+		return ""
+	}
+	return Instance.GetOwnerDefaultService()
+}
+
+func GetSessionStrings() ([]string, error) {
+	if Instance == nil {
+		return nil, fmt.Errorf("database not initialized")
+	}
+	return Instance.GetSessionStrings()
+}
+
+func DeleteAllSessionKeys() error {
+	if Instance == nil {
+		return fmt.Errorf("database not initialized")
+	}
+	return Instance.DeleteAllSessionKeys()
+}
+
+func GetAuthUsers(chatID int64) []int64 {
+	if Instance == nil {
+		return nil
+	}
+	return Instance.GetAuthUsers(chatID)
+}
+
+func AddAuthUser(chatID, userID int64) error {
+	if Instance == nil {
+		return fmt.Errorf("database not initialized")
+	}
+	return Instance.AddAuthUser(chatID, userID)
+}
+
+func RemoveAuthUser(chatID, userID int64) error {
+	if Instance == nil {
+		return fmt.Errorf("database not initialized")
+	}
+	return Instance.RemoveAuthUser(chatID, userID)
+}
+
+func IsAdmin(chatID, userID int64) bool {
+	if Instance == nil {
+		return false
+	}
+	return Instance.IsAdmin(chatID, userID)
 }

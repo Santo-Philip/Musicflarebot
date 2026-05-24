@@ -64,8 +64,8 @@ func loadDBSessions() {
 }
 
 func Init(client *tg.Client) error {
-	if err := db.InitDatabase(); err != nil {
-		return err
+	if database.Instance == nil {
+		return fmt.Errorf("database not initialized")
 	}
 
 	loadOwnerSettings()
