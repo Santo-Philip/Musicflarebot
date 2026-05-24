@@ -6,6 +6,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     build-essential \
     zlib1g-dev \
+    unzip \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -21,8 +22,8 @@ RUN set -eux; \
     if [ -z "$DL_URL" ]; then echo "no asset found"; exit 1; fi; \
     curl -sL -o ntgcalls.zip "$DL_URL"; \
     unzip -qo ntgcalls.zip -d ntgcalls_tmp; \
-    find ntgcalls_tmp -name 'ntgcalls.h' -exec cp {} src/vc/ntgcalls/ntgcalls.h \; ; \
-    find ntgcalls_tmp -name 'libntgcalls.*' -exec cp {} src/vc/ \; ; \
+    for f in $(find ntgcalls_tmp -name 'ntgcalls.h'); do cp "$f" src/vc/ntgcalls/ntgcalls.h; done; \
+    for f in $(find ntgcalls_tmp -name 'libntgcalls.*'); do cp "$f" src/vc/; done; \
     rm -rf ntgcalls.zip ntgcalls_tmp
 
 RUN CGO_ENABLED=1 GOOS=linux go build -ldflags="-w -s" -o main .
