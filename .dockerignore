@@ -1,5 +1,7 @@
 **
 !go.*
-!*.go
+!**/*.go
 !src/
-!config/
+!internal/
+!cmd/
+!Dockerfile
