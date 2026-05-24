@@ -146,11 +146,20 @@ func startHandler(m *tg.NewMessage) error {
 			media = config.Conf.StartImg
 		}
 
-		_, err := m.ReplyMedia(media, &tg.MediaOptions{
-			ParseMode:   "HTML",
-			Caption:     response,
-			ReplyMarkup: core.AddMeMarkup(client.Me().Username),
-		})
+		var err error
+		if media == "" {
+			_, err = m.Reply(response, &tg.SendOptions{
+				ParseMode:   "HTML",
+				LinkPreview: false,
+				ReplyMarkup: core.AddMeMarkup(client.Me().Username),
+			})
+		} else {
+			_, err = m.ReplyMedia(media, &tg.MediaOptions{
+				ParseMode:   "HTML",
+				Caption:     response,
+				ReplyMarkup: core.AddMeMarkup(client.Me().Username),
+			})
+		}
 
 		return err
 	} else if IsSuperGroup(m) {
